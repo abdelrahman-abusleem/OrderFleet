@@ -7,6 +7,9 @@ using OrderFleet.Application.Identity;
 using OrderFleet.Infrastructure.Identity;
 using OrderFleet.Domain.Restaurants;
 using OrderFleet.Infrastructure.Orders;
+using OrderFleet.Domain.Payments;
+using OrderFleet.Infrastructure.Payments;
+using OrderFleet.Infrastructure.Messaging;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -25,6 +28,12 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
     public DbSet<OrderDeliveryInformation> OrderDeliveryInformation => Set<OrderDeliveryInformation>();
     public DbSet<OrderCreationRequest> OrderCreationRequests => Set<OrderCreationRequest>();
     public DbSet<OrderAuditEntry> OrderAuditEntries => Set<OrderAuditEntry>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<MockPaymentAuthorization> MockPaymentAuthorizations => Set<MockPaymentAuthorization>();
+    public DbSet<MockPaymentEffect> MockPaymentEffects => Set<MockPaymentEffect>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    public DbSet<PaymentCaptureAttempt> PaymentCaptureAttempts => Set<PaymentCaptureAttempt>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

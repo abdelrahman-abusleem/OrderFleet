@@ -137,3 +137,13 @@
 - Next slice: Testcontainers migration + aggregate save/reload/transition tests; timestamp migration and monetary schema compatibility; minimal CI. Later phases remain in scope.
 
 If current repo state conflicts with this document, **the inspected repository wins as evidence**. Update this log with what is real. Do not silently modify established Domain API to make a copied test snippet compile; adapt the test to actual signatures and add evidence.
+
+### 2026-10-25 — Phase 5 payment gate verified locally
+
+- Added separate Payment aggregate, durable mock authorization/effect ledger, capture attempt classification and stable operation keys. Create authorizes trusted totals before atomic order/payment persistence; acceptance captures first and rechecks the original deadline. Owner-approved retries and ambiguous outcome handling are ADR-017.
+- Added versioned minimal Outbox facts, per-order monotonic sequence and Inbox persistence; no destination coordinates in events. Cancellation settlement consumer reads actual provider state to void/refund once, including capture committed before local save. Broker delivery remains Phase 7 work; timeout/orphan recovery remains Phase 9.
+- Tests first exposed missing Payment API, then lost-response tests exposed a 20-character state column unable to hold PendingReconciliation. Additive migration widens to 32. Concurrent tests exposed unique event sequence firing before xmin; mapped that specific rollback conflict to optimistic 409. Assertions retained.
+- `dotnet build OrderFleet.slnx -c Release --no-restore`: 0 warnings/errors. `dotnet test OrderFleet.slnx -c Release --no-restore`: 253 Domain + 81 Integration passed, 0 failed/skipped (one historical placeholder retained). `./scripts/Verify-Migrations.ps1`: nine migrations applied to a new disposable PostgreSQL 17 container; developer database unchanged. EF CLI version warning remains; command succeeded.
+- Payment integration cases cover authorization failure, concurrent capture, decline replay after host restart, transient same-key retry, unknown reconciliation without another charge, capture completion at deadline, provider/local commit crash gap, cancellation replay and concurrent provider refunds. Existing security/ownership/catalog/idempotency/concurrency suite remains green.
+- Reviewed production and generated migrations, transaction boundaries, same-operation locks, compensation races, safe error codes and absence of financial/customer data in unrestricted events. Down migration narrows state and is not for unreviewed real data. No new packages. No remote CI/push claimed.
+- Next: Phase 6 courier availability/location and real PostGIS discovery. Full remaining roadmap scope unchanged.

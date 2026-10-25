@@ -1,5 +1,6 @@
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Restaurants;
+using OrderFleet.Domain.Payments;
 
 namespace OrderFleet.Application.Orders;
 
@@ -14,7 +15,7 @@ public interface IOrderingStore
 {
     Task<OrderReplay?> FindReplayAsync(Guid actorId, string key, CancellationToken cancellationToken);
     Task<CatalogSnapshot> ReadCatalogAsync(Guid restaurantId, IReadOnlyList<Guid> productIds, CancellationToken cancellationToken);
-    Task CommitNewAsync(Order order, DeliveryDetails delivery, string key, string fingerprint, CancellationToken cancellationToken);
+    Task CommitNewAsync(Order order, Payment payment, DeliveryDetails delivery, string key, string fingerprint, CancellationToken cancellationToken);
     Task<Order?> LoadAsync(Guid id, CancellationToken cancellationToken);
     Task<DeliveryDetails?> DeliveryAsync(Guid id, CancellationToken cancellationToken);
     Task SaveAsync(CancellationToken cancellationToken);

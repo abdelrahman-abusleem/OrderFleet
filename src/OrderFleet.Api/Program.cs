@@ -14,7 +14,7 @@ var connectionString = builder.Configuration
     ?? throw new InvalidOperationException(
         "OrderFleet connection string is missing.");
 
-builder.Services.AddDbContext<OrderFleetDbContext>(
+builder.Services.AddDbContextFactory<OrderFleetDbContext>(
     options => options.UseNpgsql(connectionString));
 
 builder.Services.AddOrderFleetOpenApi();

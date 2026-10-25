@@ -113,3 +113,6 @@ Next exact slice: ...
 ```
 
 The ability to compile, a passing mocked unit test, a generated migration, a working swagger page or an unreviewed PR are **not** equivalent to production behavior verified.
+
+### Phase 5 local gate — 2026-10-25
+Release build: 0 warnings/errors. Full suite: 253 Domain + 81 Integration passed, 0 failed/skipped. Nine migrations verified in disposable PostgreSQL 17. Payment retries, ambiguity, concurrency and compensation verified; broker delivery and recovery workers remain later gates. Remote CI unverified. See ADR-017 and progress ledger.

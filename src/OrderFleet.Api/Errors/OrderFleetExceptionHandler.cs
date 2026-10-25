@@ -20,6 +20,8 @@ public sealed class OrderFleetExceptionHandler(
             ArgumentException or RequestValidationException => StatusCodes.Status400BadRequest,
             ResourceNotFoundException => StatusCodes.Status404NotFound,
             AccessDeniedException => StatusCodes.Status403Forbidden,
+            DependencyUnavailableException or ProviderOutcomeUnknownException => StatusCodes.Status503ServiceUnavailable,
+            PaymentDeclinedException => StatusCodes.Status402PaymentRequired,
             _ => 0
         };
         if (status == 0) return false;
@@ -33,7 +35,11 @@ public sealed class OrderFleetExceptionHandler(
             Title = status switch
             {
                 409 => "Request conflicts with the current resource state.",
-                404 => "Resource not found.", 403 => "Access denied.", _ => "Invalid request."
+                404 => "Resource not found.", 403 => "Access denied.",
+                402 => "Payment authorization declined.",
+                503 when exception is ProviderOutcomeUnknownException => "Payment outcome is being reconciled.",
+                503 => "A required dependency is temporarily unavailable.",
+                _ => "Invalid request."
             },
             Detail = exception is RequestValidationException ? exception.Message : null
         };

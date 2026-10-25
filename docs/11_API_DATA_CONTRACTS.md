@@ -96,3 +96,6 @@ PostGIS extension must be available inside the selected container; `postgres:17`
 - Define stable versioned event names like `order.created.v1`, `order.accepted.v1`, `dispatch.assigned.v1`, `courier.location-updated.v1`, `order.delivered.v1`; **these are proposals, not fixed requirement to publish sensitive full payloads**.
 - Event envelope: `MessageId`, `Type`, `Version`, `OccurredAtUtc`, `CorrelationId`, `AggregateId`, minimal non-PII payload. Document consumers and whether global/aggregate order matters.
 - Business failure event semantics for payment/dispatch/timeout to be decided. Avoid emitting events from failed transactions.
+
+### Implemented payment behavior (Phase 5)
+Create may return 402 on authorization decline or 503 on provider unavailability, without persisting an Order. Accept returns 409 on permanent capture decline or elapsed persisted deadline; 503 distinguishes retryable failure and uncertain outcome via safe ProblemDetails titles. Capture uses a stable server-derived key; retry the same accept endpoint. A permanent decline remains declined. Unknown outcome reconciles the provider operation before proceeding. See ADR-017. No card data, external payment callback or real gateway exists in this mock.

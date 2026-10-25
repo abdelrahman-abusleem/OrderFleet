@@ -29,6 +29,7 @@ public sealed class OrderConfiguration
         builder.HasKey(order => order.Id);
 
         builder.Property<uint>("xmin").IsRowVersion();
+        builder.Property<long>("LastEventSequence").HasDefaultValue(0L);
         builder.HasIndex(order => new { order.CustomerId, order.CreatedAt, order.Id });
         builder.HasIndex(order => new { order.RestaurantId, order.Status, order.CreatedAt });
 

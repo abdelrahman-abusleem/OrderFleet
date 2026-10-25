@@ -38,6 +38,8 @@ public static class OpenApiRegistration
             }
             if (context.Description.RelativePath?.TrimEnd('/') == "api/v1/orders" && context.Description.HttpMethod == "POST")
             {
+                operation.Responses.TryAdd("402", new OpenApiResponse { Description = "Payment authorization declined." });
+                operation.Responses.TryAdd("503", new OpenApiResponse { Description = "Payment provider unavailable; retry safely with the same key." });
                 operation.Parameters ??= [];
                 operation.Parameters.Add(new OpenApiParameter
                 {
@@ -46,6 +48,8 @@ public static class OpenApiRegistration
                     Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 100 }
                 });
             }
+            if (context.Description.RelativePath?.EndsWith("/accept") == true)
+                operation.Responses.TryAdd("503", new OpenApiResponse { Description = "Retryable failure or uncertain payment outcome; the stable capture operation is reconciled on retry." });
             return Task.CompletedTask;
         });
     });

@@ -10,6 +10,8 @@ using OrderFleet.Application.Errors;
 using OrderFleet.Application.Orders;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Infrastructure.Persistence;
+using OrderFleet.Application.Payments;
+using OrderFleet.Domain.Payments;
 
 namespace OrderFleet.IntegrationTests;
 
@@ -150,6 +152,12 @@ public sealed class CatalogOrderingApiTests(PostgresFixture fixture) : IClassFix
         var now = DateTimeOffset.UtcNow;
         var order = Order.Create(Guid.NewGuid(), restaurant, [new(product, priced.Name, priced.Price, 2)],
             new(99, 20, 9999.99m, 99999.99m), now);
+        var requestKey = Guid.NewGuid().ToString("N");
+        var fingerprint = new string('A', 64);
+        using var scope = factory.Services.CreateScope();
+        var authorization = await scope.ServiceProvider.GetRequiredService<IPaymentProvider>()
+            .AuthorizeAsync(order.CustomerId, requestKey, fingerprint, order.TotalAmount, order.Currency, CancellationToken.None);
+        var payment = Payment.Authorize(order.Id, authorization.Id, order.TotalAmount, order.Currency, now);
         await using (var changing = fixture.CreateContext())
         {
             if (change == "restaurant-availability")
@@ -159,13 +167,15 @@ public sealed class CatalogOrderingApiTests(PostgresFixture fixture) : IClassFix
                     change != "product-availability");
             await changing.SaveChangesAsync();
         }
-        await Assert.ThrowsAsync<OperationConflictException>(() => store.CommitNewAsync(order,
-            new DeliveryDetails(24.71m, 46.7m, now.AddMinutes(5)), Guid.NewGuid().ToString("N"), new string('A', 64), CancellationToken.None));
+        await Assert.ThrowsAsync<OperationConflictException>(() => store.CommitNewAsync(order, payment,
+            new DeliveryDetails(24.71m, 46.7m, now.AddMinutes(5)), requestKey, fingerprint, CancellationToken.None));
         await using var verify = fixture.CreateContext();
         Assert.False(await verify.Orders.AnyAsync(x => x.Id == order.Id));
         Assert.False(await verify.OrderDeliveryInformation.AnyAsync(x => x.OrderId == order.Id));
         Assert.False(await verify.OrderCreationRequests.AnyAsync(x => x.OrderId == order.Id));
         Assert.False(await verify.OrderAuditEntries.AnyAsync(x => x.OrderId == order.Id));
+        Assert.False(await verify.Payments.AnyAsync(x => x.OrderId == order.Id));
+        Assert.False(await verify.OutboxMessages.AnyAsync(x => x.AggregateId == order.Id));
     }
 
     [Fact]

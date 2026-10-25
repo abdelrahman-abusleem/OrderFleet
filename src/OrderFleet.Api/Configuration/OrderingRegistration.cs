@@ -5,6 +5,8 @@ using OrderFleet.Application.Orders;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Infrastructure.Clock;
 using OrderFleet.Infrastructure.Persistence;
+using OrderFleet.Application.Payments;
+using OrderFleet.Infrastructure.Payments;
 
 namespace OrderFleet.Api.Configuration;
 
@@ -40,5 +42,14 @@ public static class OrderingRegistration
         services.AddScoped<CreateOrder>();
         services.AddScoped<OrderCommands>();
         services.AddScoped<QueryOrders>();
+        services.AddOptions<MockPaymentOptions>().Bind(configuration.GetSection("MockPayments"))
+            .Validate(x => x.AuthorizeOutcome is "Success" or "Declined" or "Transient", "Invalid mock authorization outcome.")
+            .Validate(x => x.CaptureOutcome is "Success" or "Declined" or "Transient" or "Unknown", "Invalid mock capture outcome.")
+            .ValidateOnStart();
+        services.AddScoped<DurableMockPaymentProvider>();
+        services.AddScoped<IPaymentProvider>(provider => provider.GetRequiredService<DurableMockPaymentProvider>());
+        services.AddScoped<IPaymentStore, EfPaymentStore>();
+        services.AddScoped<SettleCancelledPayment>();
+        services.AddScoped<CaptureOrderPayment>();
     }
 }

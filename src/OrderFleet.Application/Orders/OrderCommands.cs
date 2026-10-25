@@ -3,10 +3,13 @@ using OrderFleet.Application.Clock;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Identity;
 using OrderFleet.Domain.Orders;
+using OrderFleet.Application.Payments;
+using OrderFleet.Domain.Payments;
 
 namespace OrderFleet.Application.Orders;
 
-public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access, IClock clock)
+public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access, IClock clock,
+    IPaymentStore payments, CaptureOrderPayment capturePayment)
 {
     public async Task AcceptAsync(Guid id, Actor actor, CancellationToken cancellationToken)
     {
@@ -15,6 +18,15 @@ public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access
         var now = clock.UtcNow;
         if (delivery is null || now >= delivery.AcceptanceDeadline)
             throw new OperationConflictException("The restaurant acceptance deadline has elapsed.");
+        if (order.Status != OrderStatus.Created) throw new OperationConflictException("Order is no longer awaiting acceptance.");
+        await capturePayment.ExecuteAsync(order, cancellationToken);
+        now = clock.UtcNow;
+        if (now >= delivery.AcceptanceDeadline)
+        {
+            // Preserve the financial fact for timeout compensation, never accept late.
+            await payments.SaveAsync(cancellationToken);
+            throw new OperationConflictException("The restaurant acceptance deadline has elapsed.");
+        }
         order.Accept(now);
         store.RecordAudit(actor.Id, order.Id, "OrderAccepted", now);
         await store.SaveAsync(cancellationToken);
@@ -53,4 +65,5 @@ public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access
         if (!await access.HasMembershipAsync(actor.Id, order.RestaurantId, cancellationToken)) throw new ResourceNotFoundException();
         return order;
     }
+
 }

@@ -6,10 +6,12 @@ using OrderFleet.Application.Clock;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Identity;
 using OrderFleet.Domain.Orders;
+using OrderFleet.Domain.Payments;
+using OrderFleet.Application.Payments;
 
 namespace OrderFleet.Application.Orders;
 
-public sealed class CreateOrder(IOrderingStore store, OrderingPolicy policy, IClock clock)
+public sealed class CreateOrder(IOrderingStore store, OrderingPolicy policy, IClock clock, IPaymentProvider provider)
 {
     public async Task<Guid> ExecuteAsync(Actor actor, CreateOrderRequest request, string? key, CancellationToken cancellationToken)
     {
@@ -33,12 +35,28 @@ public sealed class CreateOrder(IOrderingStore store, OrderingPolicy policy, ICl
         try { order = Order.Create(actor.Id, request.RestaurantId, items, policy.Limits, now); }
         catch (ArgumentException) { throw new RequestValidationException("Order exceeds configured pricing limits."); }
         var delivery = new DeliveryDetails(request.Latitude!.Value, request.Longitude!.Value, now.Add(policy.AcceptanceTimeout));
-        try { await store.CommitNewAsync(order, delivery, key!, fingerprint, cancellationToken); }
+        var authorization = await provider.AuthorizeAsync(actor.Id, key!, fingerprint, order.TotalAmount, order.Currency, cancellationToken);
+        if (authorization.State != ProviderPaymentState.Authorized)
+        {
+            var winner = await store.FindReplayAsync(actor.Id, key!, cancellationToken);
+            if (winner is not null) return Replay(winner, fingerprint);
+            if (authorization.State == ProviderPaymentState.Declined) throw new PaymentDeclinedException();
+            throw new OperationConflictException("Original payment authorization is no longer available; use a new request key.");
+        }
+        var payment = Payment.Authorize(order.Id, authorization.Id, order.TotalAmount, order.Currency, authorization.CreatedAt);
+        try { await store.CommitNewAsync(order, payment, delivery, key!, fingerprint, cancellationToken); }
         catch (DuplicateRequestException)
         {
             var committed = await store.FindReplayAsync(actor.Id, key!, cancellationToken)
                 ?? throw new OperationConflictException("Request is being processed; retry with the same key.");
             return Replay(committed, fingerprint);
+        }
+        catch (OperationConflictException)
+        {
+            var winner = await store.FindReplayAsync(actor.Id, key!, cancellationToken);
+            if (winner is not null) return Replay(winner, fingerprint);
+            await provider.ReleaseUnusedAuthorizationAsync(authorization.Id, cancellationToken);
+            throw;
         }
         return order.Id;
     }

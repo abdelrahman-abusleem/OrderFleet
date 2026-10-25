@@ -147,3 +147,9 @@ The owner intends to learn **why the implementation is designed this way** after
 10. How can a successful Release build still hide a production bug?
 
 **After implementation:** replace generic examples with the real classes, real ADRs, test commands and actual screenshots/console results if available. Do not invent test proof.
+
+### Phase 5 — payment result versus order state
+
+Follow CreateOrder → DurableMockPaymentProvider → EfOrderingStore: an external authorization can outlive a failed local transaction. CaptureOrderPayment records confirmed failure separately from an uncertain result; provider operation identity survives retries. OrderCommands checks the original deadline again after capture, since a slow successful payment cannot extend restaurant acceptance. SettleCancelledPayment uses the provider's actual state to refund a capture even if the local process crashed before recording it. Provider financial effects and local Inbox/Outbox commits are separate failure boundaries, so retries are expected.
+
+PaymentWorkflowTests uses real PostgreSQL and a new host with the same signing key to prove durable replay. The timing decorator advances the test clock after the real provider commits; it does not emulate financial behavior. Ask: why can an Outbox unique index report a concurrency conflict before xmin? EF may insert dependent facts before issuing the root update; both belong to one rollback transaction.

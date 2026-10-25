@@ -4,6 +4,10 @@ using OrderFleet.Application.Errors;
 using OrderFleet.Application.Orders;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Infrastructure.Orders;
+using OrderFleet.Domain.Payments;
+using OrderFleet.Application.Payments;
+using OrderFleet.Application.Messaging;
+using OrderFleet.Infrastructure.Messaging;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -21,10 +25,18 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
         return new(products.Length > 0, products);
     }
 
-    public async Task CommitNewAsync(Order order, DeliveryDetails delivery, string key, string fingerprint,
+    public async Task CommitNewAsync(Order order, Payment payment, DeliveryDetails delivery, string key, string fingerprint,
         CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var authorization = await context.MockPaymentAuthorizations.FromSqlInterpolated(
+            $"SELECT *, xmin FROM \"MockPaymentAuthorizations\" WHERE \"Id\" = {payment.AuthorizationId} FOR SHARE")
+            .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        if (authorization is null || authorization.State != ProviderPaymentState.Authorized
+            || authorization.ActorId != order.CustomerId || authorization.Key != key || authorization.Fingerprint != fingerprint
+            || authorization.Amount != order.TotalAmount || authorization.Currency != order.Currency
+            || payment.OrderId != order.Id || payment.Amount != order.TotalAmount || payment.Currency != order.Currency)
+            throw new OperationConflictException("Payment authorization does not match the order.");
         // Revalidate the trusted snapshot under DB share locks. Catalog mutation cannot
         // slip between this check and commit; lock in stable restaurant/product order.
         var restaurant = await context.Restaurants.FromSqlInterpolated(
@@ -39,16 +51,21 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
                 && product.Name == item.Name && product.Price == item.UnitPrice)))
             throw new OperationConflictException("Catalog changed; retry the order request.");
         context.Orders.Add(order);
+        context.Payments.Add(payment);
         context.OrderDeliveryInformation.Add(new(order.Id, delivery));
         context.OrderCreationRequests.Add(new(order.CustomerId, key, fingerprint, order.Id));
         RecordAudit(order.CustomerId, order.Id, "OrderCreated", order.CreatedAt);
+        context.OutboxMessages.Add(new(IntegrationEvents.FromPayment(payment, "payment.authorized.v1", payment.AuthorizedAt)));
+        var eventWriter = new OutboxEventWriter(context);
+        var staged = eventWriter.StageOrderFacts();
         try
         {
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            OutboxEventWriter.ClearCommitted(staged);
         }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_OrderCreationRequests" })
+            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_OrderCreationRequests" or "IX_Payments_AuthorizationId" })
         {
             await transaction.RollbackAsync(cancellationToken);
             context.ChangeTracker.Clear();
@@ -61,7 +78,20 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
     public Task<DeliveryDetails?> DeliveryAsync(Guid id, CancellationToken cancellationToken) =>
         context.OrderDeliveryInformation.AsNoTracking().Where(x => x.OrderId == id)
             .Select(x => new DeliveryDetails(x.Latitude, x.Longitude, x.AcceptanceDeadline)).SingleOrDefaultAsync(cancellationToken);
-    public async Task SaveAsync(CancellationToken cancellationToken) => await context.SaveChangesAsync(cancellationToken);
+    public async Task SaveAsync(CancellationToken cancellationToken)
+    {
+        var staged = new OutboxEventWriter(context).StageOrderFacts();
+        try { await context.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateException error) when (error.InnerException is PostgresException
+            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_OutboxMessages_AggregateId_AggregateSequence" })
+        {
+            // EF may insert the event before updating the root's xmin. Two stale
+            // writers therefore collide on the event sequence before the root CAS.
+            // SaveChanges rolls back both; expose the same optimistic conflict.
+            throw new DbUpdateConcurrencyException("Order event sequence changed concurrently.", error);
+        }
+        OutboxEventWriter.ClearCommitted(staged);
+    }
     public void RecordAudit(Guid actorId, Guid orderId, string action, DateTimeOffset occurredAt) =>
         context.OrderAuditEntries.Add(new(actorId, orderId, action, occurredAt));
     public async Task<IReadOnlyList<Order>> ListAsync(Guid? customerId, Guid? restaurantId, int offset, int count,

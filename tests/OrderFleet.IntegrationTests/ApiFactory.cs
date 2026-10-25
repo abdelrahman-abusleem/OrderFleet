@@ -11,12 +11,14 @@ internal sealed class ApiFactory(PostgresFixture postgres, TimeProvider? clock =
 {
     internal string SigningKey { get; } = signingKey ?? Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
     internal Dictionary<string, string?> Overrides { get; } = new();
+    internal Action<IServiceCollection>? CustomizeServices { get; set; }
     internal const string Issuer = "https://orderfleet.test";
     internal const string Audience = "orderfleet-tests";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureServices(services => CustomizeServices?.Invoke(services));
         if (clock is not null)
             builder.ConfigureServices(services =>
             {
