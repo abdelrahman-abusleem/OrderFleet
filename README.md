@@ -4,7 +4,7 @@ A .NET 10 restaurant ordering and courier dispatch backend, built as a modular m
 
 ## Current status
 
-2026-10-25: baseline audited; approved domain additions implemented. Release build passes; 234 Domain tests and 29 meaningful PostgreSQL tests pass (plus one retained Integration placeholder). Migration CLI verified against a disposable database. PostgreSQL xmin conflict and stale-fence protection pass; HTTP conflict mapping is next. Identity, catalog, payments, dispatch, messaging, realtime, ETA and observability remain required and are not implemented yet.
+2026-10-25: baseline audited; approved domain additions implemented. Release build passes; 234 Domain tests, 29 PostgreSQL tests and 4 HTTP error-boundary tests pass (plus one retained Integration placeholder). Migration CLI verified against a disposable database. PostgreSQL xmin conflict/stale-fence protection and safe HTTP 409 mapping pass. Identity is next; catalog, payments, dispatch, messaging, realtime, ETA and observability remain required and are not implemented yet.
 
 This folder arrived without Git metadata. The owner authorized local Git initialization after parent-repository and credential checks. No remote is configured and no remote CI run has been verified.
 

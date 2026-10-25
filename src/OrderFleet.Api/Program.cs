@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Infrastructure.Persistence;
+using OrderFleet.Api.Errors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,8 +14,11 @@ builder.Services.AddDbContext<OrderFleetDbContext>(
     options => options.UseNpgsql(connectionString));
 
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<OrderFleetExceptionHandler>();
 
 var app = builder.Build();
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

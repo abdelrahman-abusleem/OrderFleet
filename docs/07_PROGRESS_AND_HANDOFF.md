@@ -20,11 +20,11 @@
 
 | Phase | Current status | Evidence | Blocking defects | Next action |
 |---|---|---|---|---|
-| 0 Audit | NOT_STARTED | — | — | inspect repo + run baseline |
-| 1 Domain | HISTORICAL_COMPLETE / UNVERIFIED_NOW | earlier 223 total | — | rerun tests |
-| 1.5 Approved Domain additions (ADR-013) | NOT_STARTED | — | — | tests first, then implement |
-| 2A Persistence | PARTIAL / UNVERIFIED | migration reportedly applied | — | real PostgreSQL save/reload integration + minimal CI and README skeleton |
-| 2B Concurrency | NOT_VERIFIED | — | — | wait for 2A gate |
+| 0 Audit | VERIFIED_COMPLETE | dated audit below | none | complete |
+| 1 Domain | VERIFIED_COMPLETE | baseline 222 Domain passed | none | preserve rules |
+| 1.5 Approved Domain additions (ADR-013) | VERIFIED_COMPLETE locally | 234 Domain passed; baseline commit 062e3ad | remote CI unverified | complete |
+| 2A Persistence | VERIFIED locally / external CI UNVERIFIED | 18 real PostgreSQL cases + disposable migration CLI | no remote configured by owner instruction | preserve evidence, execute CI when owner enables remote |
+| 2B Concurrency | VERIFIED_COMPLETE locally | 11 DB conflicts + 4 HTTP error boundary cases | remote CI unverified | proceed to Identity |
 | 3 Identity | NOT_VERIFIED | — | — | after 2B |
 | 4 Catalog + Orders API | NOT_VERIFIED | — | — | after Identity |
 | 5 Payments | NOT_VERIFIED | — | — | after order flow |
@@ -54,6 +54,15 @@
 ```
 
 ## Blocking rule
+
+### 2026-10-25 — Phase 2B HTTP conflict boundary and local phase report
+
+- Local baseline commit 062e3ad created after owner-authorized Git initialization; phase/2b-concurrency created from it. No remote configured, no push. The initial snapshot includes the previous audited slices; no fabricated per-phase history.
+- Added HttpErrorMappingTests first (missing handler compile failure), then OrderFleetExceptionHandler registered in actual API composition. DbUpdateConcurrencyException and DomainException return safe 409 ProblemDetails; argument errors return generic 400; unexpected errors retain generic 500. Handled errors log only exception type and trace identifier, not message/PII. No blind retry.
+- HTTP tests use real ASP.NET middleware/TestServer for the production handler; DB races are separate real PostgreSQL tests. The suite does not claim an order-mutation endpoint exists yet.
+- `dotnet test OrderFleet.slnx -c Release --no-restore`: 234 Domain + 34 Integration passed, 0 failed/skipped (29 real DB + 4 HTTP boundary + 1 retained placeholder). Reviewed actual diff and checked whitespace; no new P0/P1 found. New migrations leave InitialCreate unchanged.
+- Phase 2B local behavior gate passed. Remote CI remains unverified because owner explicitly prohibits pushing/configuring a remote at this time; workflow and local equivalent commands exist. Continuing implementation without claiming remote execution.
+- Next exact slice: Phase 3 tests for Identity registration/login, JWT signature/issuer/audience/lifetime validation, role escalation rejection and ownership isolation; implement ADR-010.
 
 ### 2026-10-25 — owner-approved Git initialization and concurrency evidence
 

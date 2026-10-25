@@ -6,6 +6,8 @@
 
 ### Verified DB conflict protection (ADR-011)
 
+`Api/Errors/OrderFleetExceptionHandler.cs` translates persisted concurrency conflicts to HTTP 409 without replaying the stale command. DomainException also signals 409; ArgumentException is only a generic 400 safety net. Application validation will supply safe detailed request errors. HttpErrorMappingTests runs the production handler in real HTTP middleware, asserting status, ProblemDetails and absence of private exception messages. Unexpected exceptions remain 500. A mapping test is distinct from the PostgreSQL conflict tests and from future authorized order command endpoint tests.
+
 OrderConfiguration maps a uint `xmin` shadow property as IsRowVersion. PostgreSQL supplies a new transaction version on update, and EF includes the previously loaded version in the UPDATE predicate. A zero-row update becomes DbUpdateConcurrencyException. Domain guards still protect only the aggregate in memory; OrderConcurrencyTests demonstrates why a stale aggregate with the old AssignmentId can pass its local guard but must fail at SaveChanges. The test uses separate contexts/DB sessions, including actual parallel SaveChangesAsync calls, rather than a process-local lock. The winner's persisted status, fence, cancellation reason, times and totals are checked in a third context. No stale mutation is blindly retried.
 
 The generated xmin migration contains a rowVersion xid operation; the Npgsql generator treats this as mapping a PostgreSQL system column. It is not a new Domain member. Eleven real DB cases pass; API 409 mapping remains separate work.

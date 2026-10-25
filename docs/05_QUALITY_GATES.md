@@ -2,6 +2,8 @@
 
 ## Executed evidence — 2026-10-25
 
+Phase 2B local gate: 234 Domain + 34 Integration passed, 0 failed/skipped. Real DB stale-context conflicts (11), persistence (18), HTTP middleware mapping (4) and the historical placeholder (1) are distinguished. Production exception boundary maps concurrency/domain conflicts to safe 409 and argument errors to 400; unexpected failures yield generic 500. Actual order mutation HTTP use cases do not exist yet. Remote CI remains external/unverified under the owner's no-push instruction.
+
 DB-concurrency checkpoint: Release build 0 warnings/errors; 234 Domain + 30 Integration pass, 0 failed/skipped. Eleven new real-DB conflict cases changed from failing to passing with the approved xmin shadow property. This proves DB stale-write rejection, including same-courier reassignment, but HTTP 409 mapping is still pending. Owner authorized local Git initialization; parent checks and credential exclusion performed. Remote CI is still unverified.
 
 Phase 2A local persistence checks: Release build 0 warnings/errors; 234 Domain + 19 Integration passed (18 real PostgreSQL cases, 1 retained placeholder). Migration CLI applied all three migrations to a separate disposable PostgreSQL container. New schema stores the entire tested Domain money range; UTC conversion and money-check regressions pass. Original migration hashes unchanged. CI workflow created but remote execution UNVERIFIED; Git phase commits pending missing repository. This is local persistence proof, not a completed whole-project gate.
