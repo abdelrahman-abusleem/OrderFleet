@@ -7,6 +7,18 @@ public sealed class PaymentTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 25, 9, 0, 0, TimeSpan.Zero);
 
+    [Fact]
+    public void ReconciledDecline_RequiresAnUncertainPayment_AndRecordsConfirmedFailure()
+    {
+        var payment = Payment.Authorize(Guid.NewGuid(), Guid.NewGuid(), 1m, "SAR", Now);
+        Assert.Throws<DomainException>(() => payment.RecordReconciledDecline(Now));
+        Assert.Equal(PaymentState.Authorized, payment.State);
+        payment.RecordUncertainCapture();
+        payment.RecordReconciledDecline(Now.AddSeconds(1));
+        Assert.Equal(PaymentState.Failed, payment.State);
+        Assert.Equal(Now.AddSeconds(1), payment.FailedAt);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

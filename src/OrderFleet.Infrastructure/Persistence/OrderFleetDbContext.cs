@@ -41,6 +41,7 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
     public DbSet<CourierPosition> CourierPositions => Set<CourierPosition>();
     public DbSet<DispatchJob> DispatchJobs => Set<DispatchJob>();
     public DbSet<DispatchAttempt> DispatchAttempts => Set<DispatchAttempt>();
+    public DbSet<CourierAssignment> CourierAssignments => Set<CourierAssignment>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

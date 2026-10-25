@@ -176,3 +176,14 @@ If current repo state conflicts with this document, **the inspected repository w
 - Next after passing gate: Phase9 persisted acceptance timeout, due dispatch retries, fenced assignment timeout/reassignment, orphan authorization and crash recovery tests. Remaining realtime/ETA/ops/E2E mandatory.
 
 - Phase8 final full regression: dotnet test OrderFleet.slnx -c Release --no-build --no-restore:256 Domain +100 Integration passed, 0 failed/skipped. Local dispatch gate passed.
+
+### 2026-10-25 — Phase 9 persisted recovery implementation
+
+- RecoveryTests first failed on absent recovery module. Added bounded persisted scans and current-state locked acceptance expiry, pickup assignment expiry, due dispatch recovery, cancellation compensation, read-only uncertain-capture reconciliation and unattached authorization cleanup. Hosted worker uses fresh scopes; tests explicitly pause it except dedicated hosted proof.
+- Added assignment history with frozen UTC pickup deadline; pickup checks it inline. Existing Order Domain is unchanged. Review caught unlimited reassignment-cycle risk despite per-cycle attempt cap; added persistent AssignmentCount/MaxAssignments (default3) and historical counter backfill. Exhausted jobs remain Accepted for authorized operator resolution, no invented cancellation reason. Explicit new Payment reconciliation method preserves old uncertain-state failure guard and has a Domain test.
+- Seven recovery cases initially passed. Full regression257 Domain +107 Integration passed, 0 failed/skipped; added eighth boundary case for no timeout release after pickup and restarted pickup-timeout configuration test. Final regression follows below.
+- `dotnet build OrderFleet.slnx -c Release --no-restore`:0 warnings/errors. `./scripts/Verify-Migrations.ps1`: thirteen migrations applied to disposable PostGIS, including assignment history and assignment-count backfill. Developer database unchanged; EF CLI version warning remains.
+- Reviewed deadline derivation, inline/worker boundary comparison, Order-then-Courier locking, current fence, history update atomicity, duplicate scans, read-only financial reconciliation, compensation races, conservative orphan grace and attempt/cycle bounds. Legacy assigned data lacking histories would need reviewed reconciliation before upgrade, not silent fabricated deadlines. Unexpected invariant-corruption/sweep failures remain visible via safe logs; operational diagnostics/alerts/replay is next Phase11 work.
+- Next after passing commit: Phase10 authorized SignalR status/location flow, monotonic persisted event handling/reconnect refresh and approximate ETA; then mandatory observability/ops and delivery verification.
+
+- Phase9 final full regression: dotnet test OrderFleet.slnx -c Release --no-restore:257 Domain +108 Integration passed, 0 failed/skipped. Local recovery gate passed.

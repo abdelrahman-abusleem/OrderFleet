@@ -12,6 +12,7 @@ public interface IPaymentProvider
 {
     Task<ProviderAuthorization> AuthorizeAsync(Guid actorId, string key, string fingerprint, decimal amount, string currency, CancellationToken cancellationToken);
     Task<ProviderCapture> CaptureAsync(Guid authorizationId, CancellationToken cancellationToken);
+    Task<ProviderCapture?> FindCaptureAsync(Guid authorizationId, CancellationToken cancellationToken);
     Task<ProviderSettlement> SettleAsync(Guid authorizationId, CancellationToken cancellationToken);
     Task ReleaseUnusedAuthorizationAsync(Guid authorizationId, CancellationToken cancellationToken);
 }

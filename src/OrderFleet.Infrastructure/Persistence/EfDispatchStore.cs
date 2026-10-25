@@ -39,6 +39,12 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
         if (job is null) { job = new(order.Id, now); context.DispatchJobs.Add(job); }
         if (job.Status == "Exhausted") return DispatchOutcome.Exhausted;
         if (job.Status == "Assigned") job.Restart(now);
+        if (job.AssignmentCount >= policy.MaxAssignments)
+        {
+            job.Exhaust(now);
+            context.DispatchAttempts.Add(new(order.Id, "AssignmentLimit", now));
+            return DispatchOutcome.Exhausted;
+        }
         if (job.NextAttemptAtUtc > now) return DispatchOutcome.NotDue;
         var restaurant = await context.Restaurants.AsNoTracking().SingleAsync(x => x.Id == order.RestaurantId, ct);
         var oldest = now - couriers.LocationFreshness;
@@ -58,6 +64,7 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
         }
         var assignment = order.Assign(candidate.Id, now);
         candidate.Reserve(order.Id, assignment);
+        context.CourierAssignments.Add(new(assignment, order.Id, candidate.Id, now, policy.PickupTimeout));
         job.Record("Assigned", now, policy.MaxAttempts, assignment);
         context.DispatchAttempts.Add(new(order.Id, "Assigned", now, candidate.Id, assignment));
         new EfOrderingStore(context).RecordAudit(Guid.Empty, order.Id, "CourierDispatched", now);
@@ -77,6 +84,10 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
             ?? throw new OperationConflictException("Courier capacity is missing.");
         if (courier.OrderId != order.Id || courier.AssignmentId != assignmentId)
             throw new OperationConflictException("Courier capacity is no longer current.");
+        var reservation = await context.CourierAssignments.SingleOrDefaultAsync(x => x.Id == assignmentId && x.OrderId == orderId, ct)
+            ?? throw new OperationConflictException("Assignment schedule is missing.");
+        if (action == CourierOrderAction.Pickup && now >= reservation.PickupDeadlineUtc)
+            throw new OperationConflictException("Pickup deadline has elapsed.");
         switch (action)
         {
             case CourierOrderAction.Pickup: order.MarkPickedUp(courier.Id, assignmentId, now); courier.MarkBusy(orderId, assignmentId); break;

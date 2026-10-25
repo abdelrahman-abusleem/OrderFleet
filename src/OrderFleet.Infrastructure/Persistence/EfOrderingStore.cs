@@ -131,6 +131,21 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
                 if (fact is AssignmentReleased) job?.Restart(fact.OccurredAt.ToUniversalTime());
                 else job?.Finish(fact.OccurredAt.ToUniversalTime());
             }
+            var assignmentId = fact switch
+            {
+                OrderPickedUp x => x.AssignmentId,
+                AssignmentReleased x => x.PreviousAssignmentId,
+                OrderCancelled x => x.PreviousAssignmentId,
+                OrderDelivered x => x.AssignmentId,
+                _ => (Guid?)null
+            };
+            if (assignmentId.HasValue)
+            {
+                var assignment = await context.CourierAssignments.SingleOrDefaultAsync(x => x.Id == assignmentId && x.OrderId == order.Id, ct);
+                if (fact is OrderPickedUp) assignment?.RecordPickup(fact.OccurredAt.ToUniversalTime());
+                else if (fact is OrderDelivered) assignment?.RecordDelivery(fact.OccurredAt.ToUniversalTime());
+                else assignment?.RecordRelease(fact.OccurredAt.ToUniversalTime());
+            }
         }
     }
     public void RecordAudit(Guid actorId, Guid orderId, string action, DateTimeOffset occurredAt) =>

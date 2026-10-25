@@ -127,3 +127,6 @@ Final Phase7 full suite: 256 Domain +92 Integration, 0 failed/skipped. Local gat
 
 ### Phase 8 local gate — 2026-10-25
 Release build0 warnings/errors. Full regression256 Domain +100 Integration passed, 0 failed/skipped. Eleven migrations verified in disposable PostGIS. Actual DB parallel capacity/fence/cancel/pickup races and real broker-driven dispatch/delivery pass. Remaining recovery scheduling and operational exhaustion handling are Phase9/11. No remote CI or HA claim.
+
+### Phase 9 local gate — 2026-10-25
+Release build0 warnings/errors. Full regression257 Domain +108 Integration passed, 0 failed/skipped. Thirteen migrations verified in disposable PostGIS. Actual restart/deadline/fence/cycle/reconciliation/orphan and hosted compensation cases pass. PickedUp capacity cannot be expired by a pickup timer. Operational support/alerts remain Phase11, remote CI unverified.

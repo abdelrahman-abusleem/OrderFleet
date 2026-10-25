@@ -4,6 +4,7 @@ public sealed class DispatchJob
 {
     public Guid OrderId { get; private set; }
     public int Attempts { get; private set; }
+    public int AssignmentCount { get; private set; }
     public string Status { get; private set; } = "Pending";
     public DateTimeOffset NextAttemptAtUtc { get; private set; }
     public DateTimeOffset? CompletedAtUtc { get; private set; }
@@ -15,11 +16,13 @@ public sealed class DispatchJob
         Attempts = 0; Status = "Pending"; NextAttemptAtUtc = now; CompletedAtUtc = null; AssignmentId = null;
     }
     internal void Finish(DateTimeOffset now) { Status = "Completed"; CompletedAtUtc = now; }
+    internal void Exhaust(DateTimeOffset now) { Status = "Exhausted"; CompletedAtUtc = now; }
     internal void Record(string outcome, DateTimeOffset now, int maxAttempts, Guid? assignmentId = null)
     {
         Attempts++;
         if (outcome == "Assigned")
         {
+            AssignmentCount++;
             Status = "Assigned"; CompletedAtUtc = now; AssignmentId = assignmentId; return;
         }
         if (Attempts >= maxAttempts) { Status = "Exhausted"; CompletedAtUtc = now; return; }

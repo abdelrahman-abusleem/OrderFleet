@@ -79,6 +79,14 @@ public sealed class DurableMockPaymentProvider(IDbContextFactory<OrderFleetDbCon
         return new(authorization.State, authorization.SettledAt!.Value, authorization.CapturedAt);
     }
 
+    public async Task<ProviderCapture?> FindCaptureAsync(Guid authorizationId, CancellationToken cancellationToken)
+    {
+        await using var context = await contexts.CreateDbContextAsync(cancellationToken);
+        var effect = await context.MockPaymentEffects.AsNoTracking().SingleOrDefaultAsync(
+            x => x.AuthorizationId == authorizationId && x.Operation == "Capture", cancellationToken);
+        return effect is null ? null : new(effect.Succeeded, effect.OccurredAt);
+    }
+
     public async Task ReleaseUnusedAuthorizationAsync(Guid authorizationId, CancellationToken cancellationToken)
     {
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);

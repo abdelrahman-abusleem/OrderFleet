@@ -2,7 +2,7 @@ namespace OrderFleet.Application.Dispatch;
 
 public enum DispatchOutcome { Assigned = 1, NoCourier, NotEligible, AlreadyProcessed, Exhausted, NotDue }
 public enum CourierOrderAction { Pickup = 1, Deliver, Release }
-public sealed record DispatchPolicy(double RadiusMeters, int MaxAttempts);
+public sealed record DispatchPolicy(double RadiusMeters, int MaxAttempts, TimeSpan PickupTimeout, int MaxAssignments);
 
 public interface IDispatchStore
 {

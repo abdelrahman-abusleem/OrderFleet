@@ -58,6 +58,13 @@ public sealed class Payment
         return true;
     }
 
+    public void RecordReconciledDecline(DateTimeOffset now)
+    {
+        if (State != PaymentState.PendingReconciliation) throw new DomainException("Payment is not awaiting reconciliation.");
+        State = PaymentState.Failed;
+        FailedAt = now;
+    }
+
     public bool RecordVoid(DateTimeOffset now)
     {
         if (State == PaymentState.Voided) return false;

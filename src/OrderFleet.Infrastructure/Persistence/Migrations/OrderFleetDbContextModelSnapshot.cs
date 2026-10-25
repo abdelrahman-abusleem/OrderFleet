@@ -547,6 +547,51 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.ToTable("CourierPositions", (string)null);
                 });
 
+            modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.CourierAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AssignedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CourierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DeliveredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PickedUpAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("PickupDeadlineUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ReleasedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourierId")
+                        .IsUnique()
+                        .HasFilter("\"ReleasedAtUtc\" IS NULL AND \"DeliveredAtUtc\" IS NULL");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasFilter("\"ReleasedAtUtc\" IS NULL AND \"DeliveredAtUtc\" IS NULL");
+
+                    b.HasIndex("PickedUpAtUtc", "ReleasedAtUtc", "PickupDeadlineUtc");
+
+                    b.ToTable("CourierAssignments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Assignment_Deadline", "\"PickupDeadlineUtc\" > \"AssignedAtUtc\"");
+                        });
+                });
+
             modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.DispatchAttempt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -581,6 +626,9 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("AssignmentCount")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("AssignmentId")
                         .HasColumnType("uuid");
@@ -1055,6 +1103,21 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.HasOne("OrderFleet.Domain.Couriers.Courier", null)
                         .WithOne()
                         .HasForeignKey("OrderFleet.Infrastructure.Couriers.CourierPosition", "CourierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.CourierAssignment", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Couriers.Courier", null)
+                        .WithMany()
+                        .HasForeignKey("CourierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OrderFleet.Domain.Orders.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

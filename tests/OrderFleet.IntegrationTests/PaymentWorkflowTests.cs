@@ -138,6 +138,7 @@ public sealed class PaymentWorkflowTests(PostgresFixture fixture) : IClassFixtur
             return result;
         }
         public Task<ProviderSettlement> SettleAsync(Guid authorizationId, CancellationToken ct) => inner.SettleAsync(authorizationId, ct);
+        public Task<ProviderCapture?> FindCaptureAsync(Guid authorizationId, CancellationToken ct) => inner.FindCaptureAsync(authorizationId, ct);
         public Task ReleaseUnusedAuthorizationAsync(Guid authorizationId, CancellationToken ct) => inner.ReleaseUnusedAuthorizationAsync(authorizationId, ct);
     }
 
