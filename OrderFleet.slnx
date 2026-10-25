@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="compose.yaml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/OrderFleet.Api/OrderFleet.Api.csproj" />
+    <Project Path="src/OrderFleet.Application/OrderFleet.Application.csproj" />
+    <Project Path="src/OrderFleet.Domain/OrderFleet.Domain.csproj" />
+    <Project Path="src/OrderFleet.Infrastructure/OrderFleet.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OrderFleet.Domain.Tests/OrderFleet.Domain.Tests.csproj" />
+    <Project Path="tests/OrderFleet.IntegrationTests/OrderFleet.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

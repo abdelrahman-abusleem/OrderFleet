@@ -1,0 +1,33 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  domain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore OrderFleet.slnx
+      - run: dotnet build OrderFleet.slnx -c Release --no-restore
+      - run: dotnet test tests/OrderFleet.Domain.Tests -c Release --no-build --no-restore
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: docker info
+      - run: dotnet restore OrderFleet.slnx
+      - run: dotnet test tests/OrderFleet.IntegrationTests -c Release --no-restore --logger trx --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-results
+          path: TestResults

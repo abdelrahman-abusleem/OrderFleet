@@ -1,0 +1,28 @@
+using Microsoft.EntityFrameworkCore;
+using OrderFleet.Infrastructure.Persistence;
+using Testcontainers.PostgreSql;
+
+namespace OrderFleet.IntegrationTests;
+
+public sealed class PostgresFixture : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:17")
+        .WithDatabase("orderfleet_tests")
+        .WithUsername("orderfleet_tests")
+        .WithPassword(Guid.NewGuid().ToString("N"))
+        .Build();
+
+    public OrderFleetDbContext CreateContext() => new(
+        new DbContextOptionsBuilder<OrderFleetDbContext>()
+            .UseNpgsql(container.GetConnectionString()).Options);
+
+    public async Task InitializeAsync()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        await container.StartAsync(timeout.Token);
+        await using var context = CreateContext();
+        await context.Database.MigrateAsync(timeout.Token);
+    }
+
+    public async Task DisposeAsync() => await container.DisposeAsync();
+}
