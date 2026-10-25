@@ -26,8 +26,8 @@
 | 2A Persistence | VERIFIED locally / external CI UNVERIFIED | 18 real PostgreSQL cases + disposable migration CLI | no remote configured by owner instruction | preserve evidence, execute CI when owner enables remote |
 | 2B Concurrency | VERIFIED_COMPLETE locally | 11 DB conflicts + 4 HTTP error boundary cases | remote CI unverified | proceed to Identity |
 | 3 Identity | VERIFIED_COMPLETE locally | 17 real HTTP/JWT/DB security cases | remote CI unverified | proceed to catalog/order commands |
-| 4 Catalog + Orders API | IN_PROGRESS | ADR-015 owner-approved; identity/read boundary ready | none | trusted pricing, destinations, deadlines, idempotency |
-| 5 Payments | NOT_VERIFIED | — | — | after order flow |
+| 4 Catalog + Orders API | VERIFIED_COMPLETE locally | 11 new Domain + 19 HTTP/DB catalog/order cases; 7 migrations | remote CI unverified | integrate approved payment workflow |
+| 5 Payments | IN_PROGRESS | ADR-008 binding; trusted order pipeline ready | none | durable mock authorize/capture and compensation |
 | 6 Couriers + Geo | NOT_VERIFIED | — | — | after core order flow |
 | 7 Outbox + RabbitMQ | NOT_VERIFIED | — | — | after events defined |
 | 8 Dispatch | NOT_VERIFIED | — | — | after courier + outbox |
@@ -54,6 +54,18 @@
 ```
 
 ## Blocking rule
+
+### 2026-10-25 — Phase 4 catalog and ordering local phase report
+
+- Branch phase/4-catalog-orders from Identity commit 572c461. Added acceptance tests first: missing catalog Domain types and 8 HTTP failures (404 missing endpoints). Implemented new Restaurant/Product/Coordinates types without altering the established Order aggregate, pricing guards or state machine.
+- Application owns catalog management/browse, trusted create/transition/list/private-delivery use cases. API binds/authorizes/maps only. Role and live membership are both checked. Catalog product price cap uses the configured OrderPricingLimits; no independent hardcoded policy. Public catalog is active/available and paged (max 50); unknown JSON inputs including forged prices are rejected.
+- Atomic creation saves immutable order/item snapshots, private delivery info, persisted UTC deadline, actor-scoped idempotency and audit. Revalidates authoritative catalog under restaurant/product FOR SHARE locks in stable order immediately before commit. Same key/request replays same order; changed request conflicts; database uniqueness rolls back concurrent losers including owned rows/audit. Separate tests change price/product availability/restaurant activity after pricing but before commit and assert no orphan rows.
+- Accept enforces the persisted deadline before Domain transition; a host restart/new 60-minute configuration does not extend an existing five-minute deadline. Customer/restaurant/admin cancellation reasons are derived server-side. Invalid/repeated operations conflict. Audit commits with successful transitions; rejected/concurrent losers do not add audit rows. Actual parallel accept/cancel requests produce one legal winner.
+- Added catalog/delivery/idempotency and audit/index/constraint migrations, plus restaurant membership FK to real Restaurants. Updated existing Identity fixture data to create actual restaurant rows, preserving all prior assertions. InitialCreate is unchanged. All seven migrations applied by CLI only to a disposable container. Developer DB untouched.
+- OpenAPI now documents bearer authentication, anonymous catalog/auth overrides, errors and required Idempotency-Key. Inspected installed Microsoft.OpenApi 2.12.0 and official .NET 10 transformer docs. Test initially assumed a trailing-slash document path; corrected to the generator's actual normalized path, then passed without weakening header/auth checks.
+- Self-review: fixed nullable warning, used shared configured monetary limits, normalized transition/audit timestamps, checked SQL parameters/lock ordering, idempotency rollback, authorization, private destination handling and bounded queries. Logs contain actor/order IDs only; no destination or credentials. New Domain models stay dependency-free. No scoped P0/P1 findings left. Payment coupling and durable messaging are explicitly later mandatory phases, not claimed done.
+- Final commands: `dotnet build OrderFleet.slnx -c Release --no-restore` passed with 0 warnings/errors; `./scripts/Verify-Migrations.ps1` applied seven migrations successfully; `dotnet test OrderFleet.slnx -c Release --no-build --no-restore` passed 245 Domain + 70 Integration, 0 failed/skipped. Integration = 29 PostgreSQL persistence/concurrency + 17 Identity + 19 catalog/order HTTP/DB + 4 middleware + 1 retained placeholder.
+- Phase 4 local gate passes. Remote CI remains unverified/no push. Next Phase 5: mock payment authorization on create, capture before acceptance commit, failed capture behavior and idempotent void/refund according to ADR-008; no dispatch until capture. Cancellation messaging becomes durable Outbox/Inbox in Phase 7 and recovery in Phase 9; these remain required.
 
 ### 2026-10-25 — Phase 3 Identity local phase report
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Domain.Orders;
+using OrderFleet.Application.Errors;
 
 namespace OrderFleet.Api.Errors;
 
@@ -15,8 +16,10 @@ public sealed class OrderFleetExceptionHandler(
     {
         var status = exception switch
         {
-            DomainException or DbUpdateConcurrencyException => StatusCodes.Status409Conflict,
-            ArgumentException => StatusCodes.Status400BadRequest,
+            DomainException or DbUpdateConcurrencyException or OperationConflictException => StatusCodes.Status409Conflict,
+            ArgumentException or RequestValidationException => StatusCodes.Status400BadRequest,
+            ResourceNotFoundException => StatusCodes.Status404NotFound,
+            AccessDeniedException => StatusCodes.Status403Forbidden,
             _ => 0
         };
         if (status == 0) return false;
@@ -27,9 +30,12 @@ public sealed class OrderFleetExceptionHandler(
         var problem = new ProblemDetails
         {
             Status = status,
-            Title = status == StatusCodes.Status409Conflict
-                ? "Request conflicts with the current resource state."
-                : "Invalid request."
+            Title = status switch
+            {
+                409 => "Request conflicts with the current resource state.",
+                404 => "Resource not found.", 403 => "Access denied.", _ => "Invalid request."
+            },
+            Detail = exception is RequestValidationException ? exception.Message : null
         };
         problem.Extensions["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier;
         if (!await problemDetails.TryWriteAsync(new ProblemDetailsContext

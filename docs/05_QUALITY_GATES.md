@@ -2,6 +2,8 @@
 
 ## Executed evidence — 2026-10-25
 
+Phase 4 local gate: 245 Domain + 70 Integration passed, 0 failed/skipped; Release build 0 warnings/errors; disposable CLI applied seven migrations. Nineteen new HTTP/DB cases cover trusted snapshots, cross-actor denial, private destinations, inline expiry, restart/configuration persistence, idempotency (parallel/replay/misuse), catalog-change fencing, audit rollback and OpenAPI. Eleven new Domain cases cover coordinates/catalog invariants. Prior tests remain. No financial/dispatch/messaging completion claim; those mandatory phases follow.
+
 Phase 3 local gate: Release build 0 warnings/errors; disposable CLI applied five migrations; 234 Domain + 51 Integration pass, 0 failed/skipped. New 17 Identity security cases run actual HTTP/JWT/Identity stores against PostgreSQL, not test-auth bypass. Account uniqueness, password hashing, credential errors, lockout/rate limiting, claim checks and resource isolation/revocation verified. Package advisories: no known vulnerabilities reported. Current API has authentication and order reads; mutation/payment/dispatch workflows are not yet claimed.
 
 Phase 2B local gate: 234 Domain + 34 Integration passed, 0 failed/skipped. Real DB stale-context conflicts (11), persistence (18), HTTP middleware mapping (4) and the historical placeholder (1) are distinguished. Production exception boundary maps concurrency/domain conflicts to safe 409 and argument errors to 400; unexpected failures yield generic 500. Actual order mutation HTTP use cases do not exist yet. Remote CI remains external/unverified under the owner's no-push instruction.

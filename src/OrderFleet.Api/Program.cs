@@ -5,6 +5,7 @@ using OrderFleet.Api.Errors;
 using OrderFleet.Api.Identity;
 using OrderFleet.Api.Endpoints;
 using System.Text.Json.Serialization;
+using OrderFleet.Api.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,19 +17,20 @@ var connectionString = builder.Configuration
 builder.Services.AddDbContext<OrderFleetDbContext>(
     options => options.UseNpgsql(connectionString));
 
-builder.Services.AddOpenApi();
+builder.Services.AddOrderFleetOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<OrderFleetExceptionHandler>();
 builder.Services.AddOrderFleetIdentity(builder.Configuration);
+builder.Services.AddOrdering(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
 
 var app = builder.Build();
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
 }
 
 app.UseHttpsRedirection();
@@ -37,6 +39,8 @@ app.UseAuthorization();
 app.UseRateLimiter();
 app.MapIdentityEndpoints();
 app.MapOrderReadEndpoints();
+app.MapCatalogEndpoints();
+app.MapOrderWriteEndpoints();
 
 var summaries = new[]
 {

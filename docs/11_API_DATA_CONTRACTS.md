@@ -1,5 +1,25 @@
 # Proposed external/API/data contracts — implement deliberately
 
+## Implemented contracts through Phase 4 (2026-10-25)
+
+Authentication: register/login/me and strict JSON DTOs, as described in README. Access token role is insufficient without resource ownership. Foreign and nonexistent order/restaurant resources use the same 404; unsupported roles use 403, no token uses 401.
+
+Catalog: anonymous bounded `GET /api/v1/restaurants` and `GET /api/v1/restaurants/{id}/products`; page defaults 1, pageSize 20 (max 50). RestaurantOwner can `POST /api/v1/restaurants` with name/latitude/longitude; actor receives the restaurant membership in the same transaction. Members with RestaurantOwner/RestaurantStaff can create products and `PUT /api/v1/restaurants/{id}/products/{productId}` with name/price/isAvailable; default product availability is true. `PUT /api/v1/restaurants/{id}/availability` requires isActive. No body owner identity, currency override, opening-hours or zone engine. Price cap comes from configured Ordering policy.
+
+Orders: Customer `POST /api/v1/orders` requires one `Idempotency-Key` header (1..100 characters). Body:
+
+```json
+{"restaurantId":"00000000-0000-0000-0000-000000000001","items":[{"productId":"00000000-0000-0000-0000-000000000101","quantity":2}],"latitude":0,"longitude":0}
+```
+
+Coordinates are mandatory, range-validated and private; zero is a valid coordinate. Unknown JSON fields (including supplied unitPrice/customerId/status) are rejected. Item quantities/count, duplicates and trusted catalog availability/prices are validated. Success is 201 with `{ "id": "..." }` and Location. Same authenticated customer + key + canonical request replays that result; changing the request with that key returns 409. Different customers have separate key scope. Dedupe records are currently retained without expiry.
+
+`GET /api/v1/orders/{id}` returns authorized item/name/price snapshots and status, never destination coordinates. `GET /api/v1/orders` is the customer's own paged list; restaurant users supply `restaurantId` and must be a live member. `GET /api/v1/orders/{id}/delivery` returns coordinates/deadline only after the same participant authorization. Precise destination does not enter logs, traces or public events.
+
+Restaurant members `POST /api/v1/orders/{id}/accept` before the persisted deadline, or `/reject` while Domain permits. Accept at/after the deadline returns 409 regardless of whether a worker ran. `/cancel` derives its reason from authenticated actor: customer request, restaurant cancellation or admin cancellation. Clients cannot choose a more privileged cancellation reason. Repeated/invalid transitions return 409; Domain state machine is unchanged. Audit actor/action rows share the successful state transaction. Financial authorization/capture/void/refund coupling is Phase 5 work, not yet implied by these current endpoints.
+
+OpenAPI `/openapi/v1.json` is exposed in Development/Testing only, with bearer authentication and required create-order idempotency header. Public catalog/auth operations override the default security requirement; protected endpoints document 401/403 and writes document 400/409. No real credentials or customer coordinates appear in examples.
+
 > **NOT an override of existing Domain semantics.** These contracts provide detailed guidance and illustrative names. Verify actual repository patterns and record approved changes via ADR. No schema/client contract is guaranteed until implemented/tested.
 
 ## HTTP conventions

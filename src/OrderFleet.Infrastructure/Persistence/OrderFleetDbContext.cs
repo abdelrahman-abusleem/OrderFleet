@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using OrderFleet.Application.Identity;
 using OrderFleet.Infrastructure.Identity;
+using OrderFleet.Domain.Restaurants;
+using OrderFleet.Infrastructure.Orders;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -18,6 +20,11 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<RestaurantMembership> RestaurantMemberships => Set<RestaurantMembership>();
+    public DbSet<Restaurant> Restaurants => Set<Restaurant>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<OrderDeliveryInformation> OrderDeliveryInformation => Set<OrderDeliveryInformation>();
+    public DbSet<OrderCreationRequest> OrderCreationRequests => Set<OrderCreationRequest>();
+    public DbSet<OrderAuditEntry> OrderAuditEntries => Set<OrderAuditEntry>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -28,7 +35,7 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
         var memberships = modelBuilder.Entity<RestaurantMembership>();
         memberships.HasKey(x => new { x.UserId, x.RestaurantId });
         memberships.HasOne<IdentityUser<Guid>>().WithMany().HasForeignKey(x => x.UserId);
-        // Restaurant FK is added with the catalog module; identity owns user grants.
+        memberships.HasOne<Restaurant>().WithMany().HasForeignKey(x => x.RestaurantId);
         var roleIds = new[]
         {
             "c92cb45d-1e41-43c8-b5dc-000000000001", "c92cb45d-1e41-43c8-b5dc-000000000002",

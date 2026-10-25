@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OrderFleet.Domain.Orders;
+using OrderFleet.Domain.Restaurants;
 using OrderFleet.Infrastructure.Identity;
 using OrderFleet.Infrastructure.Persistence;
 
@@ -64,11 +65,13 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         await using var factory = new ApiFactory(fixture);
         using var client = factory.CreateClient(new() { BaseAddress = new("https://localhost") });
         var user = Guid.NewGuid();
-        var restaurant = Guid.NewGuid();
+        var restaurantEntity = Restaurant.Create("Identity test kitchen", new(24.7m, 46.7m));
+        var restaurant = restaurantEntity.Id;
         var order = Order.Create(Guid.NewGuid(), restaurant,
             [new(Guid.NewGuid(), "Tea", 3m, 2)], new(99, 20, 9999.99m, 99999.99m), DateTimeOffset.UtcNow);
         await using (var context = fixture.CreateContext())
         {
+            context.Restaurants.Add(restaurantEntity);
             context.Users.Add(new IdentityUser<Guid> { Id = user, UserName = $"{user:N}@example.test" });
             context.RestaurantMemberships.Add(new RestaurantMembership(user, restaurant));
             context.Orders.Add(order);
@@ -178,7 +181,8 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         await using var factory = new ApiFactory(fixture);
         using var client = factory.CreateClient(new() { BaseAddress = new("https://localhost") });
         var user = Guid.NewGuid();
-        var restaurant = Guid.NewGuid();
+        var restaurantEntity = Restaurant.Create("Identity test kitchen", new(24.7m, 46.7m));
+        var restaurant = restaurantEntity.Id;
         var order = Order.Create(role == "Customer" ? user : Guid.NewGuid(), restaurant,
             [new(Guid.NewGuid(), "Tea", 3m, 2)], new(99, 20, 9999.99m, 99999.99m), DateTimeOffset.UtcNow);
         if (role == "Courier")
@@ -188,6 +192,7 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         }
         await using (var context = fixture.CreateContext())
         {
+            context.Restaurants.Add(restaurantEntity);
             if (role.StartsWith("Restaurant", StringComparison.Ordinal))
             {
                 context.Users.Add(new IdentityUser<Guid> { Id = user, UserName = $"{user:N}@example.test" });

@@ -70,6 +70,19 @@
 
 ## ADR template
 
+### ADR-016 — ACCEPTED: atomic order creation and scoped replay
+
+- Date: 2026-10-25; implementation of approved ADR-015 and existing reliability requirements.
+- Create takes restaurantId, productId/quantity rows and required private destination coordinates. CustomerId comes from verified claims; no supplied price/name/status/assignment is accepted. Domain creates snapshots from authoritative catalog data.
+- Read catalog in one bounded query, then revalidate restaurant activity, product ownership/availability/name/price under PostgreSQL FOR SHARE locks in stable restaurant/product order before committing. A catalog change between pricing and commit produces a conflict and no orphan order/delivery/request/audit rows. Existing catalog/order writes use xmin; no in-process lock is treated as a DB guarantee.
+- Store Order, owned items, private linked delivery information, UTC acceptance deadline, request fingerprint and audit in one transaction. The deadline is frozen at creation (CreatedAt + configured timeout, default 5 minutes); changes to future configuration do not extend existing orders. Application rejects acceptance at/after that persisted deadline even without a timeout worker. Reliable cancellation/compensation worker remains Phase 9 work.
+- A dedicated order-create request table gives operation scope implicitly; key = CustomerId + Idempotency-Key (1..100 characters, no controls). Fingerprint is SHA256 over restaurant, normalized numeric coordinates and sorted product IDs/quantities. Same key/request returns the same order ID and 201; changed request returns 409. DB uniqueness arbitrates concurrent first requests and rollback prevents extra orders. No raw destination is stored in the fingerprint or emitted publicly.
+- Request records currently have no expiry (conservative dedupe for the demo); operational retention must preserve documented replay semantics. No cleanup/deletion is implied by this phase. Payment keys/records have their own operation scope in Phase 5.
+- Authorized delivery details use a separate resource endpoint and live ownership checks. Public catalog includes only merchant pickup locations; no customer destination. Mutating order actor/action audit commits with the transition. New DB constraints reinforce coordinates, product ownership, membership FK and unique ProductId per order.
+- Alternatives: trust client price (rejected); check catalog only before commit window (race); process-local dedupe/lock (not durable); allow timeout configuration changes to extend old orders (breaks persisted deadline contract).
+- OpenAPI uses installed Microsoft.OpenApi 2.12.0/.NET 10 transformers: bearer scheme, anonymous-operation overrides, 400/401/403/409 descriptions and required Idempotency-Key header. Source verified: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/customize-openapi?view=aspnetcore-10.0.
+- Known phase boundary: current create/accept financial coupling is added in Phase 5 per ADR-008; dispatch is not present and must require successful capture. Domain events are not claimed durably transported until Phase 7.
+
 ### ADR-015 — ACCEPTED (owner, 2026-10-25): delivery information, availability and persisted deadlines
 
 - Customer supplies required delivery latitude/longitude on create. Validate finite range (latitude -90..90, longitude -180..180), persist linked private order delivery information. No precise destination in public responses, logs/traces or unrestricted events. Authorized participant access only. This does not add unapproved members to the established Order aggregate; delivery information has a separate persistence model linked by OrderId.

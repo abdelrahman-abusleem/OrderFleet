@@ -29,6 +29,8 @@ public sealed class OrderConfiguration
         builder.HasKey(order => order.Id);
 
         builder.Property<uint>("xmin").IsRowVersion();
+        builder.HasIndex(order => new { order.CustomerId, order.CreatedAt, order.Id });
+        builder.HasIndex(order => new { order.RestaurantId, order.Status, order.CreatedAt });
 
         builder.Property(order => order.CustomerId)
             .IsRequired();
@@ -76,6 +78,7 @@ public sealed class OrderConfiguration
                 .ValueGeneratedOnAdd();
 
             item.HasKey("OrderId", "Id");
+            item.HasIndex("OrderId", nameof(OrderItem.ProductId)).IsUnique();
 
             item.Property(x => x.ProductId)
                 .IsRequired();

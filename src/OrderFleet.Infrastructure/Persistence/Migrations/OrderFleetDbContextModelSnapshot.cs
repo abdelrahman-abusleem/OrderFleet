@@ -316,9 +316,90 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CustomerId", "CreatedAt", "Id");
+
+                    b.HasIndex("RestaurantId", "Status", "CreatedAt");
+
                     b.ToTable("Orders", null, t =>
                         {
                             t.HasCheckConstraint("CK_Orders_TotalAmount", "\"TotalAmount\" > 0 AND \"TotalAmount\" <= 79228162514264337593543950335 AND \"TotalAmount\" = trunc(\"TotalAmount\", 2)");
+                        });
+                });
+
+            modelBuilder.Entity("OrderFleet.Domain.Restaurants.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("RestaurantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RestaurantId");
+
+                    b.ToTable("Products", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Products_Price", "\"Price\" > 0 AND \"Price\" <= 79228162514264337593543950335 AND \"Price\" = trunc(\"Price\", 2)");
+                        });
+                });
+
+            modelBuilder.Entity("OrderFleet.Domain.Restaurants.Restaurant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Latitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Longitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Restaurants", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Restaurant_Latitude", "\"Latitude\" BETWEEN -90 AND 90");
+
+                            t.HasCheckConstraint("CK_Restaurant_Longitude", "\"Longitude\" BETWEEN -180 AND 180");
                         });
                 });
 
@@ -332,7 +413,86 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId", "RestaurantId");
 
+                    b.HasIndex("RestaurantId");
+
                     b.ToTable("RestaurantMemberships");
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Orders.OrderAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "OccurredAt");
+
+                    b.ToTable("OrderAuditEntries", (string)null);
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Orders.OrderCreationRequest", b =>
+                {
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ActorId", "Key");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("OrderCreationRequests", (string)null);
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Orders.OrderDeliveryInformation", b =>
+                {
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AcceptanceDeadline")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Latitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Longitude")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("OrderId");
+
+                    b.HasIndex("AcceptanceDeadline");
+
+                    b.ToTable("OrderDeliveryInformation", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Delivery_Latitude", "\"Latitude\" BETWEEN -90 AND 90");
+
+                            t.HasCheckConstraint("CK_Delivery_Longitude", "\"Longitude\" BETWEEN -180 AND 180");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -418,6 +578,9 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("OrderId", "Id");
 
+                            b1.HasIndex("OrderId", "ProductId")
+                                .IsUnique();
+
                             b1.ToTable("OrderItems", null, t =>
                                 {
                                     t.HasCheckConstraint("CK_OrderItems_TotalPrice", "\"TotalPrice\" > 0 AND \"TotalPrice\" <= 79228162514264337593543950335 AND \"TotalPrice\" = trunc(\"TotalPrice\", 2)");
@@ -432,11 +595,53 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
                 });
 
+            modelBuilder.Entity("OrderFleet.Domain.Restaurants.Product", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Restaurants.Restaurant", null)
+                        .WithMany()
+                        .HasForeignKey("RestaurantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OrderFleet.Infrastructure.Identity.RestaurantMembership", b =>
                 {
+                    b.HasOne("OrderFleet.Domain.Restaurants.Restaurant", null)
+                        .WithMany()
+                        .HasForeignKey("RestaurantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<System.Guid>", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Orders.OrderAuditEntry", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Orders.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Orders.OrderCreationRequest", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Orders.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Orders.OrderDeliveryInformation", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Orders.Order", null)
+                        .WithOne()
+                        .HasForeignKey("OrderFleet.Infrastructure.Orders.OrderDeliveryInformation", "OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

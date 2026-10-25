@@ -1,5 +1,19 @@
 # Learning guide and technical-review syllabus
 
+## Implemented: trusted catalog and transactional orders (Phase 4)
+
+`Domain/Restaurants` owns intrinsic names/prices/activity; `Domain/Geo/Coordinates` validates finite decimal latitude/longitude ranges. `ManageCatalog` checks actor role and restaurant grant before mutation; its price cap comes from the same configured pricing policy used by orders. Catalog DTOs expose public merchant information only.
+
+Read the creation flow: `OrderWriteEndpoints` binds product IDs/quantities/destination and a header → `Application/Orders/CreateOrder` derives customer from Actor, validates bounds and canonical fingerprint → reads authoritative catalog → calls existing `Order.Create` → `EfOrderingStore.CommitNewAsync` revalidates prices/activity/ownership under DB share locks → commits Order/items/private delivery/deadline/request/audit atomically. A changed catalog returns conflict without orphan rows. This avoids a price-change gap while retaining the original order snapshot after catalog edits.
+
+Idempotency uses a unique actor/key in a dedicated create-operation table. Two requests may pass the first read; only one transaction can commit the key. The loser rolls back and reads the winner, comparing fingerprints before replaying. Different request with same key conflicts. No process-local lock or cache is treated as durable dedupe. SHA256 stores no raw destination in the fingerprint. Records currently do not expire; changing retention later requires explicit replay semantics.
+
+`OrderDeliveryInformation` stores private coordinates and the frozen deadline. A separate authorized delivery endpoint exposes it only to participants; regular order/public catalog responses do not. `OrderCommands.AcceptAsync` checks the persisted deadline before calling Domain.Accept; a delayed worker cannot make an expired acceptance legal. `OrderAuditEntries` records actor/action in the same save transaction, so a lost xmin race creates no false audit success. The reliable timeout/compensation worker is still Phase 9 work.
+
+`CatalogOrderingApiTests` tests actual HTTP + PostgreSQL transactions, parallel requests and host restart. `CatalogChangesBetweenPricingAndCommit_RejectStaleSnapshotWithoutOrphans` directly exercises the real adapter with a stale trusted snapshot, not a mock of business behavior. OpenAPI transformer tests verify bearer/header contracts. Full phase gate: 245 Domain + 70 Integration pass. New mutations still need the Phase 5 financial coupling and Phase 7 Outbox before the complete journey is ready.
+
+Questions to demonstrate: Why must the price be checked again before commit? What does FOR SHARE protect? Why does a unique idempotency key need a fingerprint? Why must audit roll back with a conflict? Why is a persisted deadline stronger than a timer? Why does changing timeout configuration not extend an existing order? How is private destination access different from public restaurant location?
+
 ## Implemented: Identity and resource authorization (Phase 3)
 
 `Application/Identity/IdentityContracts.cs` defines the credential port and actor/roles. Infrastructure's `IdentityAccounts` adapts ASP.NET Core Identity: no custom password cryptography; account + Customer grant commit together. Identity table constraints arbitrate concurrent registration. The public API never accepts a requested privileged role, and registration does not reveal duplicate accounts. Login error titles are uniform. Lockout and per-IP throttling address different attack paths.
