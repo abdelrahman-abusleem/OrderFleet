@@ -12,6 +12,7 @@ using OrderFleet.Infrastructure.Payments;
 using OrderFleet.Infrastructure.Messaging;
 using OrderFleet.Domain.Couriers;
 using OrderFleet.Infrastructure.Couriers;
+using OrderFleet.Infrastructure.Dispatch;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -38,6 +39,8 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
     public DbSet<PaymentCaptureAttempt> PaymentCaptureAttempts => Set<PaymentCaptureAttempt>();
     public DbSet<Courier> Couriers => Set<Courier>();
     public DbSet<CourierPosition> CourierPositions => Set<CourierPosition>();
+    public DbSet<DispatchJob> DispatchJobs => Set<DispatchJob>();
+    public DbSet<DispatchAttempt> DispatchAttempts => Set<DispatchAttempt>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

@@ -8,7 +8,8 @@ public sealed class MessagingWorker(OutboxRelay relay, RabbitConsumer consumer, 
     ILogger<MessagingWorker> logger) : BackgroundService
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken) => options.Value.Enabled
-        ? Task.WhenAll(PublishLoopAsync(stoppingToken), ConsumeLoopAsync(stoppingToken)) : Task.CompletedTask;
+        ? Task.WhenAll(PublishLoopAsync(stoppingToken), ConsumeLoopAsync(consumer.RunPaymentsAsync, "Payment", stoppingToken),
+            ConsumeLoopAsync(consumer.RunDispatchAsync, "Dispatch", stoppingToken)) : Task.CompletedTask;
 
     private async Task PublishLoopAsync(CancellationToken ct)
     {
@@ -28,13 +29,13 @@ public sealed class MessagingWorker(OutboxRelay relay, RabbitConsumer consumer, 
         }
     }
 
-    private async Task ConsumeLoopAsync(CancellationToken ct)
+    private async Task ConsumeLoopAsync(Func<CancellationToken, Task> run, string consumerName, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
-            try { await consumer.RunPaymentsAsync(ct); }
+            try { await run(ct); }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
-            catch (Exception error) { logger.LogWarning("Payment consumer unavailable {FailureType}", error.GetType().Name); }
+            catch (Exception error) { logger.LogWarning("{Consumer} consumer unavailable {FailureType}", consumerName, error.GetType().Name); }
             await Task.Delay(TimeSpan.FromSeconds(5), ct);
         }
     }

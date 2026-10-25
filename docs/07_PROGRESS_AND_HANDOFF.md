@@ -166,3 +166,13 @@ If current repo state conflicts with this document, **the inspected repository w
 - Next after final regression/commit: Phase8 atomic courier claims, assignment persistence, stale fencing and concurrent dispatch tests; continue remaining roadmap.
 
 - Phase7 final full regression: dotnet test OrderFleet.slnx -c Release --no-build --no-restore: 256 Domain +92 Integration passed, 0 failed/skipped. Local delivery gate passes. No schema changes; ten previously verified migrations unchanged.
+
+### 2026-10-25 — Phase 8 dispatch verification in progress
+
+- DispatchConcurrencyTests first failed compilation on absent Application dispatch types. Added policy/use cases, atomic Postgres claim store, persistent jobs/attempts, filtered active courier constraint, fenced courier HTTP transitions and real dispatch consumer. Pickup/delivery/release/cancellation commit capacity with order/events, using consistent lock order and xmin.
+- Initial one-courier race test found a leftover eligible courier from another test, not a lost claim; geographically isolated candidate fixtures now assert exact intended cardinality without deleting shared data. Removed blocking task.Result test warnings by awaiting completed tasks. Targeted eight cases pass, including actual hosted RabbitMQ accepted→dispatch→pickup→deliver and DB rejection of duplicate active capacity. Existing full regression before final additional cases:256 Domain +97 Integration passed.
+- `dotnet build OrderFleet.slnx -c Release --no-restore`: 0 warnings/errors. `./scripts/Verify-Migrations.ps1`: eleven migrations applied to disposable PostGIS, no developer DB changes. Final full regression pending below. InitialCreate unchanged; no Domain Order changes.
+- Self-review checked current payment amount/currency/capture eligibility, row lock lifetime/order, SKIP LOCKED candidate selection, profile xmin/location race, stale assignment rejection, cancel/release/deliver capacity consistency, transaction event sequence, actor audit and anonymous/foreign courier denial. New operational exhaustion preserves existing allowed cancellation reasons. No broker call inside dispatch transaction.
+- Next after passing gate: Phase9 persisted acceptance timeout, due dispatch retries, fenced assignment timeout/reassignment, orphan authorization and crash recovery tests. Remaining realtime/ETA/ops/E2E mandatory.
+
+- Phase8 final full regression: dotnet test OrderFleet.slnx -c Release --no-build --no-restore:256 Domain +100 Integration passed, 0 failed/skipped. Local dispatch gate passed.

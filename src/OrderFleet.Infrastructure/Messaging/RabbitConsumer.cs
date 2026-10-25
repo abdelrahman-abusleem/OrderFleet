@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OrderFleet.Application.Payments;
+using OrderFleet.Application.Dispatch;
+using OrderFleet.Application.Messaging;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 
@@ -8,7 +10,13 @@ namespace OrderFleet.Infrastructure.Messaging;
 
 public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScopeFactory scopes, RabbitDeliveryProcessor processor)
 {
-    public async Task RunPaymentsAsync(CancellationToken ct)
+    public Task RunPaymentsAsync(CancellationToken ct) => RunAsync(RabbitTopology.Payments(options.Value.Prefix),
+        sp => sp.GetRequiredService<CancelledPaymentEventHandler>(), ct);
+
+    public Task RunDispatchAsync(CancellationToken ct) => RunAsync(RabbitTopology.Dispatch(options.Value.Prefix),
+        sp => sp.GetRequiredService<DispatchEventHandler>(), ct);
+
+    private async Task RunAsync(string queue, Func<IServiceProvider, IIntegrationEventHandler> resolve, CancellationToken ct)
     {
         await using var session = await RabbitSession.OpenAsync(options.Value, ct);
         var channel = session.Channel;
@@ -17,7 +25,6 @@ public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScop
         var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         channel.ChannelShutdownAsync += (_, _) => { stopped.TrySetResult(); return Task.CompletedTask; };
         var consumer = new AsyncEventingBasicConsumer(channel);
-        var queue = RabbitTopology.Payments(options.Value.Prefix);
         consumer.ReceivedAsync += async (_, delivery) =>
         {
             try
@@ -25,7 +32,7 @@ public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScop
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 timeout.CancelAfter(TimeSpan.FromSeconds(30));
                 using var scope = scopes.CreateScope();
-                var handler = scope.ServiceProvider.GetRequiredService<CancelledPaymentEventHandler>();
+                var handler = resolve(scope.ServiceProvider);
                 await processor.ProcessAsync(channel, queue, delivery.DeliveryTag, delivery.BasicProperties,
                     delivery.Body, handler, timeout.Token);
             }

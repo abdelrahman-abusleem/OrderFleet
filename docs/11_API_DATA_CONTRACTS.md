@@ -105,3 +105,9 @@ Create may return 402 on authorization decline or 503 on provider unavailability
 Courier role: PUT /api/v1/couriers/me registers own offline profile idempotently; GET reads own status/last observation (no coordinates). PUT /me/availability accepts required isAvailable. PUT /me/location accepts required latitude, longitude and observedAt UTC. Invalid/time-window errors400, duplicate/out-of-order/conflicting writes409. Unknown fields such as courierId reject400; identity always comes from claims.
 
 GET /api/v1/restaurants/{id}/nearby-couriers?radiusMeters=5000&limit=20 requires owner/staff live membership or Admin. Returns courier ID, distanceMeters and observation time, without coordinates. Available/fresh positions only, deterministic distance then ID ranking. Config Couriers:LocationFreshnessSeconds default120, FutureSkewSeconds default15, MaxRadiusMeters default20000. See ADR-018 for bounds and storage semantics.
+
+### Implemented dispatch/courier order transitions (Phase 8)
+
+Server dispatch consumes order.accepted.v1 / order.assignment-released.v1. No public assignment/courier selection input. Eligibility independently requires accepted order + captured matching payment + available fresh nearby courier. Attempts/jobs and active-capacity uniqueness persist in PostgreSQL.
+
+Courier POST /api/v1/orders/{id}/pickup and /deliver accept {assignmentId}. Current assigned identity and fence required. POST /release-assignment supports the current Courier or Admin and same fence, only before pickup as Domain allows. Empty fence400; wrong courier404; stale/invalid current-owner operation409. Pickup makes courier Busy; delivery/release clears current capacity atomically. Delivered Order keeps historical assignment identifiers. Release returns Order to Accepted, then dispatch produces a new fence even for the same courier. Admin cancellation of Assigned orders also releases capacity atomically. See ADR-020.

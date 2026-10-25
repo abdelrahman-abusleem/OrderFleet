@@ -372,6 +372,14 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssignmentId")
+                        .IsUnique()
+                        .HasFilter("\"AssignmentId\" IS NOT NULL");
+
+                    b.HasIndex("CourierId")
+                        .IsUnique()
+                        .HasFilter("\"CourierId\" IS NOT NULL AND \"Status\" IN ('Assigned', 'PickedUp')");
+
                     b.HasIndex("CustomerId", "CreatedAt", "Id");
 
                     b.HasIndex("RestaurantId", "Status", "CreatedAt");
@@ -537,6 +545,71 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.HasIndex("ObservedAt");
 
                     b.ToTable("CourierPositions", (string)null);
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.DispatchAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CourierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "OccurredAtUtc");
+
+                    b.ToTable("DispatchAttempts", (string)null);
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.DispatchJob", b =>
+                {
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("OrderId");
+
+                    b.HasIndex("Status", "NextAttemptAtUtc");
+
+                    b.ToTable("DispatchJobs", (string)null);
                 });
 
             modelBuilder.Entity("OrderFleet.Infrastructure.Identity.RestaurantMembership", b =>
@@ -982,6 +1055,24 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.HasOne("OrderFleet.Domain.Couriers.Courier", null)
                         .WithOne()
                         .HasForeignKey("OrderFleet.Infrastructure.Couriers.CourierPosition", "CourierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.DispatchAttempt", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Orders.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.DispatchJob", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Orders.Order", null)
+                        .WithOne()
+                        .HasForeignKey("OrderFleet.Infrastructure.Dispatch.DispatchJob", "OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

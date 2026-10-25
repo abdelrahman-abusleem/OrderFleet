@@ -20,6 +20,35 @@ namespace OrderFleet.IntegrationTests;
 public sealed class RabbitDeliveryTests(PostgresFixture postgres, RabbitFixture rabbit) : IClassFixture<PostgresFixture>, IClassFixture<RabbitFixture>
 {
     [Fact]
+    public async Task AcceptedEvent_DispatchesThroughHostedConsumer_AndCourierCompletesDelivery()
+    {
+        var options = Options();
+        await using var factory = new ApiFactory(postgres);
+        factory.Overrides["Messaging:Enabled"] = "true";
+        factory.Overrides["Messaging:Uri"] = options.Uri;
+        factory.Overrides["Messaging:Prefix"] = options.Prefix;
+        using var courier = await DispatchConcurrencyTests.CourierAsync(factory, 60);
+        using var owner = await ClientAsync(factory, "RestaurantOwner");
+        var (restaurant, product) = await DispatchConcurrencyTests.CatalogForDispatchAsync(owner, 60);
+        var id = await DispatchConcurrencyTests.AcceptedAsync(factory, owner, restaurant, product);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        Guid assignment;
+        while (true)
+        {
+            await using var context = postgres.CreateContext();
+            var order = await context.Orders.SingleAsync(x => x.Id == id, timeout.Token);
+            if (order.Status == OrderFleet.Domain.Orders.OrderStatus.Assigned) { assignment = order.AssignmentId!.Value; break; }
+            await Task.Delay(50, timeout.Token);
+        }
+        Assert.Equal(HttpStatusCode.NoContent, (await courier.PostAsJsonAsync($"/api/v1/orders/{id}/pickup", new { assignmentId = assignment })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await courier.PostAsJsonAsync($"/api/v1/orders/{id}/deliver", new { assignmentId = assignment })).StatusCode);
+        await using var verify = postgres.CreateContext();
+        var acceptedEvent = await verify.OutboxMessages.SingleAsync(x => x.AggregateId == id && x.Type == "order.accepted.v1");
+        Assert.True(await verify.InboxMessages.AnyAsync(x => x.MessageId == acceptedEvent.Id && x.Consumer == "dispatch.v1"));
+        Assert.Equal(OrderFleet.Domain.Orders.OrderStatus.Delivered, (await verify.Orders.SingleAsync(x => x.Id == id)).Status);
+    }
+
+    [Fact]
     public async Task BrokerOutageAfterOrderCommit_BacklogsAndPublishesAfterRestart()
     {
         await using var factory = new ApiFactory(postgres);

@@ -32,6 +32,9 @@ public sealed class OrderConfiguration
         builder.Property<long>("LastEventSequence").HasDefaultValue(0L);
         builder.HasIndex(order => new { order.CustomerId, order.CreatedAt, order.Id });
         builder.HasIndex(order => new { order.RestaurantId, order.Status, order.CreatedAt });
+        builder.HasIndex(order => order.CourierId).IsUnique()
+            .HasFilter("\"CourierId\" IS NOT NULL AND \"Status\" IN ('Assigned', 'PickedUp')");
+        builder.HasIndex(order => order.AssignmentId).IsUnique().HasFilter("\"AssignmentId\" IS NOT NULL");
 
         builder.Property(order => order.CustomerId)
             .IsRequired();

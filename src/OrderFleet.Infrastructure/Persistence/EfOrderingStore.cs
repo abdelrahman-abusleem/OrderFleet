@@ -80,6 +80,14 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
             .Select(x => new DeliveryDetails(x.Latitude, x.Longitude, x.AcceptanceDeadline)).SingleOrDefaultAsync(cancellationToken);
     public async Task SaveAsync(CancellationToken cancellationToken)
     {
+        await using var ownedTransaction = context.Database.CurrentTransaction is null
+            ? await context.Database.BeginTransactionAsync(cancellationToken) : null;
+        var roots = context.ChangeTracker.Entries<Order>().Where(x => x.Entity.DomainEvents.Count > 0)
+            .OrderBy(x => x.Entity.Id).ToArray();
+        foreach (var root in roots.Where(x => x.State != EntityState.Added))
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT 1 FROM \"Orders\" WHERE \"Id\" = {root.Entity.Id} FOR UPDATE", cancellationToken);
+        await SynchronizeCourierCapacityAsync(roots.Select(x => x.Entity), cancellationToken);
         var staged = new OutboxEventWriter(context).StageOrderFacts();
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
@@ -90,7 +98,40 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
             // SaveChanges rolls back both; expose the same optimistic conflict.
             throw new DbUpdateConcurrencyException("Order event sequence changed concurrently.", error);
         }
-        OutboxEventWriter.ClearCommitted(staged);
+        if (ownedTransaction is not null)
+        {
+            await ownedTransaction.CommitAsync(cancellationToken);
+            OutboxEventWriter.ClearCommitted(staged);
+        }
+    }
+
+    private async Task SynchronizeCourierCapacityAsync(IEnumerable<Order> orders, CancellationToken ct)
+    {
+        foreach (var order in orders)
+        foreach (var fact in order.DomainEvents)
+        {
+            (Guid CourierId, Guid AssignmentId)? references = fact switch
+            {
+                AssignmentReleased x => (x.PreviousCourierId, x.PreviousAssignmentId),
+                OrderCancelled { PreviousCourierId: not null, PreviousAssignmentId: not null } x => (x.PreviousCourierId.Value, x.PreviousAssignmentId.Value),
+                OrderDelivered x => (x.CourierId, x.AssignmentId),
+                _ => null
+            };
+            if (references.HasValue)
+            {
+                var courier = await context.Couriers.FromSqlInterpolated(
+                    $"SELECT *, xmin FROM \"Couriers\" WHERE \"Id\" = {references.Value.CourierId} FOR UPDATE").SingleOrDefaultAsync(ct);
+                // Standalone legacy Order persistence does not require a Courier
+                // profile. Application dispatch/transition paths always require it.
+                courier?.Release(order.Id, references.Value.AssignmentId);
+            }
+            if (fact is AssignmentReleased or OrderCancelled or OrderDelivered)
+            {
+                var job = await context.DispatchJobs.SingleOrDefaultAsync(x => x.OrderId == order.Id, ct);
+                if (fact is AssignmentReleased) job?.Restart(fact.OccurredAt.ToUniversalTime());
+                else job?.Finish(fact.OccurredAt.ToUniversalTime());
+            }
+        }
     }
     public void RecordAudit(Guid actorId, Guid orderId, string action, DateTimeOffset occurredAt) =>
         context.OrderAuditEntries.Add(new(actorId, orderId, action, occurredAt));
