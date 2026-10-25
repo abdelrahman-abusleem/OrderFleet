@@ -12,7 +12,8 @@ public static class EventEnvelopeCodec
     [
         "order.created.v1", "order.accepted.v1", "order.courier-assigned.v1", "order.assignment-released.v1",
         "order.picked-up.v1", "order.delivered.v1", "order.cancelled.v1", "payment.authorized.v1",
-        "payment.captured.v1", "payment.failed.v1", "payment.capture-uncertain.v1", "payment.voided.v1", "payment.refunded.v1"
+        "payment.captured.v1", "payment.failed.v1", "payment.capture-uncertain.v1", "payment.voided.v1", "payment.refunded.v1",
+        "courier.location-updated.v1"
     ];
 
     public static byte[] Encode(IntegrationEvent message)
@@ -40,7 +41,8 @@ public static class EventEnvelopeCodec
             || (message.Type.StartsWith("order.", StringComparison.Ordinal) && message.AggregateSequence is not > 0))
             throw new InvalidDataException("Invalid event envelope.");
         using var payload = JsonDocument.Parse(message.PayloadJson, new JsonDocumentOptions { MaxDepth = 8 });
-        if (!payload.RootElement.TryGetProperty("orderId", out var order) || !order.TryGetGuid(out var id) || id != message.AggregateId
+        var identity = message.Type == "courier.location-updated.v1" ? "courierId" : "orderId";
+        if (!payload.RootElement.TryGetProperty(identity, out var order) || !order.TryGetGuid(out var id) || id != message.AggregateId
             || payload.RootElement.TryGetProperty("latitude", out _) || payload.RootElement.TryGetProperty("longitude", out _))
             throw new InvalidDataException("Invalid event payload.");
     }

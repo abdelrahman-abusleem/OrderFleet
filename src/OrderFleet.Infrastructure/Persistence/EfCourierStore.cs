@@ -5,21 +5,30 @@ using OrderFleet.Application.Couriers;
 using OrderFleet.Application.Errors;
 using OrderFleet.Domain.Couriers;
 using OrderFleet.Infrastructure.Couriers;
+using OrderFleet.Application.Clock;
+using OrderFleet.Application.Messaging;
+using System.Text.Json;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
-public sealed class EfCourierStore(OrderFleetDbContext context) : ICourierStore
+public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock) : ICourierStore
 {
     public Task<Courier?> FindAsync(Guid id, CancellationToken cancellationToken) => context.Couriers.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
     public void Add(Courier courier) => context.Couriers.Add(courier);
     public async Task SaveAsync(Courier courier, CancellationToken cancellationToken)
     {
+        context.ChangeTracker.DetectChanges();
+        var observed = context.Entry(courier).Property(x => x.LocationObservedAt).IsModified;
         if (courier.LocationObservedAt.HasValue)
         {
             var position = await context.CourierPositions.SingleOrDefaultAsync(x => x.CourierId == courier.Id, cancellationToken);
             if (position is null) context.CourierPositions.Add(new(courier));
             else position.Update(courier);
         }
+        if (observed)
+            context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), "courier.location-updated.v1", 1,
+                clock.UtcNow, courier.Id, System.Diagnostics.Activity.Current?.TraceId.ToString(),
+                JsonSerializer.Serialize(new { courierId = courier.Id, observedAt = courier.LocationObservedAt }))));
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
             { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Couriers" or "PK_CourierPositions" })

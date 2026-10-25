@@ -130,3 +130,6 @@ Release build0 warnings/errors. Full regression256 Domain +100 Integration passe
 
 ### Phase 9 local gate — 2026-10-25
 Release build0 warnings/errors. Full regression257 Domain +108 Integration passed, 0 failed/skipped. Thirteen migrations verified in disposable PostGIS. Actual restart/deadline/fence/cycle/reconciliation/orphan and hosted compensation cases pass. PickedUp capacity cannot be expired by a pickup timer. Operational support/alerts remain Phase11, remote CI unverified.
+
+### Phase 10 local gate — 2026-10-25
+SDK10.0.403/runtime10.0.14 Release build0 warnings/errors. Full regression257 Domain +119 Integration passed,0 failed/skipped. Real SignalR HTTP/WebSocket, live authorization/revocation, expiry, reconnect/sequence, private location and actual RabbitMQ-to-hub flow verified. Thirteen migrations passed on patched runtime; no known package advisories. Single-API realtime/best-effort and approximate ETA limitations documented. Remote CI unverified.

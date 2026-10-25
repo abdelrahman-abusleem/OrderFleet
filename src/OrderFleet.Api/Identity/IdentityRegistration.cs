@@ -27,6 +27,7 @@ public static class IdentityRegistration
         services.AddScoped<IIdentityAccounts, IdentityAccounts>();
         services.AddScoped<IOrderReadStore, EfOrderReadStore>();
         services.AddScoped<GetOrder>();
+        services.AddScoped<OrderAccessPolicy>();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<JwtTokenIssuer>();
         services.AddOptions<JwtOptions>().Bind(configuration.GetSection("Jwt"))
@@ -78,6 +79,16 @@ public static class IdentityRegistration
         };
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/hubs/orders")
+                    && (context.HttpContext.WebSockets.IsWebSocketRequest || context.Request.Headers.Accept.ToString().Contains("text/event-stream", StringComparison.Ordinal)))
+                {
+                    var token = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(token)) context.Token = token;
+                }
+                return Task.CompletedTask;
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();

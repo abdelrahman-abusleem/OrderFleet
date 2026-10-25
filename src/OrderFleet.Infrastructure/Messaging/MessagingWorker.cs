@@ -9,7 +9,8 @@ public sealed class MessagingWorker(OutboxRelay relay, RabbitConsumer consumer, 
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken) => options.Value.Enabled
         ? Task.WhenAll(PublishLoopAsync(stoppingToken), ConsumeLoopAsync(consumer.RunPaymentsAsync, "Payment", stoppingToken),
-            ConsumeLoopAsync(consumer.RunDispatchAsync, "Dispatch", stoppingToken)) : Task.CompletedTask;
+            ConsumeLoopAsync(consumer.RunDispatchAsync, "Dispatch", stoppingToken),
+            ConsumeLoopAsync(consumer.RunRealtimeAsync, "Realtime", stoppingToken)) : Task.CompletedTask;
 
     private async Task PublishLoopAsync(CancellationToken ct)
     {

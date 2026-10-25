@@ -24,6 +24,7 @@ public static class RabbitTopology
         await channel.QueueBindAsync(Dispatch(prefix), Events(prefix), "order.accepted.v1", cancellationToken: ct);
         await channel.QueueBindAsync(Dispatch(prefix), Events(prefix), "order.assignment-released.v1", cancellationToken: ct);
         await channel.QueueBindAsync(Realtime(prefix), Events(prefix), "order.#", cancellationToken: ct);
+        await channel.QueueBindAsync(Realtime(prefix), Events(prefix), "courier.location-updated.v1", cancellationToken: ct);
         await channel.QueueBindAsync(Financial(prefix), Events(prefix), "payment.#", cancellationToken: ct);
     }
 

@@ -12,6 +12,8 @@ using OrderFleet.Domain.Payments;
 using OrderFleet.Infrastructure.Clock;
 using OrderFleet.Infrastructure.Messaging;
 using RabbitMQ.Client;
+using Microsoft.AspNetCore.SignalR.Client;
+using OrderFleet.Application.Realtime;
 using static OrderFleet.IntegrationTests.CatalogOrderingApiTests;
 
 namespace OrderFleet.IntegrationTests;
@@ -19,6 +21,34 @@ namespace OrderFleet.IntegrationTests;
 [Trait("Category", "RabbitMQ")]
 public sealed class RabbitDeliveryTests(PostgresFixture postgres, RabbitFixture rabbit) : IClassFixture<PostgresFixture>, IClassFixture<RabbitFixture>
 {
+    [Fact]
+    public async Task CommittedOrderEvent_ReachesAuthorizedSignalRClientThroughRealBroker()
+    {
+        var options = Options();
+        await using var factory = new ApiFactory(postgres);
+        factory.Overrides["Messaging:Enabled"] = "true";
+        factory.Overrides["Messaging:Uri"] = options.Uri;
+        factory.Overrides["Messaging:Prefix"] = options.Prefix;
+        using var owner = await ClientAsync(factory, "RestaurantOwner");
+        var (restaurant, product) = await CatalogAsync(owner);
+        using var customer = await ClientAsync(factory, "Customer");
+        var created = await CreateAsync(customer, Request(restaurant, product), Guid.NewGuid().ToString("N"));
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await using var connection = RealtimeApiTests.Connection(factory, customer.DefaultRequestHeaders.Authorization!.Parameter);
+        await connection.StartAsync();
+        var snapshot = await connection.InvokeAsync<OrderSubscriptionSnapshot>("SubscribeOrder", id);
+        Assert.Equal("Created", snapshot.Order.Status);
+        var received = new TaskCompletionSource<OrderUpdate>(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On<OrderUpdate>("OrderUpdated", update =>
+        {
+            if (update.OrderId == id && update.Status == "Cancelled") received.TrySetResult(update);
+        });
+        Assert.Equal(HttpStatusCode.NoContent, (await customer.PostAsync($"/api/v1/orders/{id}/cancel", null)).StatusCode);
+        var notification = await received.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.Equal(2, notification.Sequence);
+        Assert.Null(notification.CourierId);
+    }
+
     [Fact]
     public async Task AcceptedEvent_DispatchesThroughHostedConsumer_AndCourierCompletesDelivery()
     {

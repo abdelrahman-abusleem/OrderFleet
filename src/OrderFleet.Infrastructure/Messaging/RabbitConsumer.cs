@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using OrderFleet.Application.Payments;
 using OrderFleet.Application.Dispatch;
 using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Realtime;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 
@@ -15,6 +16,9 @@ public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScop
 
     public Task RunDispatchAsync(CancellationToken ct) => RunAsync(RabbitTopology.Dispatch(options.Value.Prefix),
         sp => sp.GetRequiredService<DispatchEventHandler>(), ct);
+
+    public Task RunRealtimeAsync(CancellationToken ct) => RunAsync(RabbitTopology.Realtime(options.Value.Prefix),
+        sp => sp.GetRequiredService<RealtimeEventHandler>(), ct);
 
     private async Task RunAsync(string queue, Func<IServiceProvider, IIntegrationEventHandler> resolve, CancellationToken ct)
     {

@@ -187,3 +187,14 @@ If current repo state conflicts with this document, **the inspected repository w
 - Next after passing commit: Phase10 authorized SignalR status/location flow, monotonic persisted event handling/reconnect refresh and approximate ETA; then mandatory observability/ops and delivery verification.
 
 - Phase9 final full regression: dotnet test OrderFleet.slnx -c Release --no-restore:257 Domain +108 Integration passed, 0 failed/skipped. Local recovery gate passed.
+
+### 2026-10-25 — Phase 10 realtime/ETA verification
+
+- EtaCalculatorTests first failed on absent API. Implemented PostGIS derived-distance port, bounded labeled calculator and owned ETA endpoint. Extracted the existing OrderAccessPolicy without changing authorization behavior; hub reuses it with live role intersection and DB snapshot sequence.
+- Added actual SignalR Hub, private server-controlled groups, live per-send authority checks, expiry closure, reconnect snapshot, monotonic sequence and throttled persisted private courier GPS. Minimal location Outbox fact has no coordinates; actual broker realtime consumer delivers committed snapshots. No schema changes.
+- Initial package10.0.12 flagged high CVE-2026-70159; verified official advisory/release metadata, provisioned hash-verified project-local SDK10.0.403/runtime10.0.14, aligned ASP.NET packages10.0.14 and enforced minimum runtime. No global SDK modification. Transitive package vulnerability audit reports no known vulnerabilities. See ADR-023.
+- First eight targeted realtime/ETA cases passed. Full patched-runtime regression257 Domain +118 Integration passed,0 failed/skipped (includes actual broker→hub and expiry closure). Added browser WebSocket/query-scope test:1 passed. Final full regression follows below. Build last run0 warnings/errors. Migration audit13 migrations passed after fixing child SDK PATH; initial failed attempt recorded in ADR-023.
+- Reviewed participant authorization, current role/membership/fence revalidation, no client group authority, token-query scope/log filtering, connection/subscription bounds, same-connection async sequencing, latest persisted snapshot, courier observation ordering/privacy and server-only PostGIS distances. Realtime has documented single-API scale boundary and best-effort/reconnect semantics; no cluster delivery/road ETA claim.
+- Next after final passing commit: Phase11 Serilog/OpenTelemetry traces+metrics, safe health checks/configuration, secured operational diagnostics/replay and full Compose reproducibility. Then required Phase12 final setup/E2E/independent review/docs.
+
+- Phase10 final build0 warnings/errors and full regression on SDK10.0.403/runtime10.0.14:257 Domain +119 Integration passed,0 failed/skipped. Thirteen migrations reverified and package audit clean for known advisories. Local realtime/ETA gate passed.

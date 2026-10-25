@@ -13,12 +13,12 @@ public sealed record OrderItemDetails(Guid ProductId, string Name, decimal UnitP
 public sealed record OrderDetails(Guid Id, Guid RestaurantId, string Status, string Currency, decimal TotalAmount,
     Guid? CourierId, Guid? AssignmentId, string? CancelReason, IReadOnlyList<OrderItemDetails> Items);
 
-public sealed class GetOrder(IOrderReadStore store, IRestaurantAccess access)
+public sealed class GetOrder(IOrderReadStore store, OrderAccessPolicy access)
 {
     public async Task<OrderDetails?> ExecuteAsync(Guid id, Actor actor, CancellationToken cancellationToken)
     {
         var order = await store.FindAsync(id, cancellationToken);
-        if (order is null || !await CanReadAsync(order, actor, cancellationToken)) return null;
+        if (order is null || !await access.CanReadAsync(order.CustomerId, order.RestaurantId, order.CourierId, actor, cancellationToken)) return null;
         return Describe(order);
     }
 
@@ -26,12 +26,4 @@ public sealed class GetOrder(IOrderReadStore store, IRestaurantAccess access)
             order.CourierId, order.AssignmentId, order.CancelReason?.ToString(), order.Items
                 .Select(x => new OrderItemDetails(x.ProductId, x.Name, x.UnitPrice, x.Quantity, x.TotalPrice)).ToArray());
 
-    private async Task<bool> CanReadAsync(Order order, Actor actor, CancellationToken cancellationToken)
-    {
-        if (actor.IsInRole(OrderFleetRoles.Admin)) return true;
-        if (actor.IsInRole(OrderFleetRoles.Customer) && order.CustomerId == actor.Id) return true;
-        if (actor.IsInRole(OrderFleetRoles.Courier) && order.CourierId == actor.Id) return true;
-        return (actor.IsInRole(OrderFleetRoles.RestaurantStaff) || actor.IsInRole(OrderFleetRoles.RestaurantOwner))
-            && await access.HasMembershipAsync(actor.Id, order.RestaurantId, cancellationToken);
-    }
 }

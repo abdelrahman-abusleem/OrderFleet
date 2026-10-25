@@ -71,7 +71,7 @@ public sealed class CourierSpatialTests(PostgresFixture fixture) : IClassFixture
         var now = DateTimeOffset.UtcNow;
         await LocationAsync(courier, 0, 179.999m, now);
         await using var context = fixture.CreateContext();
-        var store = new EfCourierStore(context);
+        var store = new EfCourierStore(context, new OrderFleet.Infrastructure.Clock.SystemClock(TimeProvider.System));
         var results = await store.NearbyAsync(0, -179.999m, 300, now.AddMinutes(-2), now.AddSeconds(15), 50, CancellationToken.None);
         var result = Assert.Single(results);
         Assert.InRange(result.DistanceMeters, 222, 223);
@@ -107,9 +107,9 @@ public sealed class CourierSpatialTests(PostgresFixture fixture) : IClassFixture
         var old = await stale.Couriers.SingleAsync(x => x.Id == id);
         var current = await fresh.Couriers.SingleAsync(x => x.Id == id);
         current.UpdateLocation(new(25, 47), now.AddSeconds(2));
-        await new EfCourierStore(fresh).SaveAsync(current, CancellationToken.None);
+        await new EfCourierStore(fresh, new OrderFleet.Infrastructure.Clock.SystemClock(TimeProvider.System)).SaveAsync(current, CancellationToken.None);
         old.UpdateLocation(new(0, 0), now.AddSeconds(1));
-        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => new EfCourierStore(stale).SaveAsync(old, CancellationToken.None));
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => new EfCourierStore(stale, new OrderFleet.Infrastructure.Clock.SystemClock(TimeProvider.System)).SaveAsync(old, CancellationToken.None));
         await using var verify = fixture.CreateContext();
         Assert.Equal(25m, (await verify.Couriers.SingleAsync(x => x.Id == id)).Latitude);
         Assert.Equal(47, (await verify.CourierPositions.SingleAsync(x => x.CourierId == id)).Location.X);

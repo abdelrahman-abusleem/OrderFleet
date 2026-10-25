@@ -1,5 +1,14 @@
 # Uses only a new disposable container. Never targets the developer database.
 $ErrorActionPreference = 'Stop'
+$migrationDotnet = 'dotnet'
+$migrationPreviousRoot = $env:DOTNET_ROOT
+$migrationPreviousPath = $env:PATH
+$migrationLocalSdk = Join-Path $PSScriptRoot '../.tools/dotnet'
+if (Test-Path (Join-Path $migrationLocalSdk 'dotnet.exe')) {
+    $env:DOTNET_ROOT = (Resolve-Path $migrationLocalSdk).Path
+    $migrationDotnet = Join-Path $env:DOTNET_ROOT 'dotnet.exe'
+    $env:PATH = $env:DOTNET_ROOT + [IO.Path]::PathSeparator + $env:PATH
+}
 $migrationContainer = 'orderfleet-migration-audit-' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $env:POSTGRES_PASSWORD = [Guid]::NewGuid().ToString('N')
 try {
@@ -17,7 +26,7 @@ try {
     $migrationPort = (docker inspect --format '{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}' $migrationContainer).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Could not read temporary database port.' }
     $env:ConnectionStrings__OrderFleet = "Host=127.0.0.1;Port=$migrationPort;Database=orderfleet_audit;Username=orderfleet_audit;Password=$env:POSTGRES_PASSWORD"
-    dotnet ef database update --project src/OrderFleet.Infrastructure --startup-project src/OrderFleet.Api --configuration Release --no-build
+    & $migrationDotnet ef database update --project src/OrderFleet.Infrastructure --startup-project src/OrderFleet.Api --configuration Release --no-build
     if ($LASTEXITCODE -ne 0) { throw 'Migration CLI failed.' }
     docker exec $migrationContainer psql -U orderfleet_audit -d orderfleet_audit `
         -c 'SELECT "MigrationId" FROM "__EFMigrationsHistory" ORDER BY "MigrationId";'
@@ -26,4 +35,6 @@ try {
 finally {
     docker stop $migrationContainer | Out-Null
     Remove-Item Env:POSTGRES_PASSWORD,Env:ConnectionStrings__OrderFleet -ErrorAction SilentlyContinue
+    $env:DOTNET_ROOT = $migrationPreviousRoot
+    $env:PATH = $migrationPreviousPath
 }

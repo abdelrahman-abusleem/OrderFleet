@@ -6,6 +6,10 @@ using OrderFleet.Api.Identity;
 using OrderFleet.Api.Endpoints;
 using System.Text.Json.Serialization;
 using OrderFleet.Api.Configuration;
+using OrderFleet.Api.Realtime;
+using OrderFleet.Application.Eta;
+using OrderFleet.Application.Identity;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +30,10 @@ builder.Services.AddCouriers(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddDispatch(builder.Configuration);
 builder.Services.AddRecovery(builder.Configuration);
+builder.Services.AddEta(builder.Configuration);
+builder.Services.AddOrderRealtime();
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Warning);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
 
@@ -47,6 +55,11 @@ app.MapCatalogEndpoints();
 app.MapOrderWriteEndpoints();
 app.MapCourierEndpoints();
 app.MapDispatchEndpoints();
+app.MapHub<OrdersHub>("/hubs/orders", options =>
+    { options.CloseOnAuthenticationExpiration = true; options.AllowStatefulReconnects = false; })
+    .RequireAuthorization(policy => policy.RequireRole(OrderFleetRoles.All));
+app.MapGet("/api/v1/orders/{id:guid}/eta", async (Guid id, ClaimsPrincipal principal, GetEta query, CancellationToken ct) =>
+    Results.Ok(await query.ExecuteAsync(id, principal.ToActor(), ct))).RequireAuthorization();
 
 var summaries = new[]
 {
