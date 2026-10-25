@@ -1,6 +1,7 @@
 
 services:
   postgres:
+    profiles: [legacy]
     image: postgres:17
     container_name: orderfleet-postgres
     restart: unless-stopped
@@ -24,15 +25,17 @@ services:
 
   # Separate opt-in database; never attaches PostGIS to the legacy developer volume.
   postgis:
-    profiles: [spatial]
-    image: postgis/postgis:17-3.5
+    profiles: [spatial, app]
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
     restart: unless-stopped
+    mem_limit: 512m
+    pids_limit: 256
     environment:
       POSTGRES_DB: orderfleet
       POSTGRES_USER: orderfleet
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in local .env}
     ports:
-      - "127.0.0.1:5434:5432"
+      - "127.0.0.1:${POSTGIS_PORT:-5434}:5432"
     volumes:
       - orderfleet_postgis_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,15 +45,18 @@ services:
       retries: 10
 
   rabbitmq:
-    profiles: [messaging]
-    image: rabbitmq:4.2-management
+    profiles: [messaging, app]
+    image: rabbitmq:4.2-management@sha256:7ce498399b07a9594a3d23e5a7920edf233edb888e82503c35357c23cefc2e61
     restart: unless-stopped
+    mem_limit: 512m
+    pids_limit: 256
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-orderfleet}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in local .env}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 2:2"
     ports:
-      - "127.0.0.1:5672:5672"
-      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     volumes:
       - orderfleet_rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -58,6 +64,36 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: orderfleet-api:local
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__OrderFleet: "Host=postgis;Port=5432;Database=orderfleet;Username=orderfleet;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in local .env};Include Error Detail=false;GSS Encryption Mode=Disable"
+      Jwt__Issuer: http://orderfleet.local
+      Jwt__Audience: orderfleet-demo
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in local .env}
+      Messaging__Uri: "amqp://${RABBITMQ_USER:-orderfleet}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in local .env}@rabbitmq:5672"
+      Telemetry__Exporter: Console
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    pids_limit: 256
 
 volumes:
   orderfleet_postgres_data:

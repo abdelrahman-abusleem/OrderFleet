@@ -28,7 +28,8 @@ public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock) : 
         if (observed)
             context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), "courier.location-updated.v1", 1,
                 clock.UtcNow, courier.Id, System.Diagnostics.Activity.Current?.TraceId.ToString(),
-                JsonSerializer.Serialize(new { courierId = courier.Id, observedAt = courier.LocationObservedAt }))));
+                JsonSerializer.Serialize(new { courierId = courier.Id, observedAt = courier.LocationObservedAt }),
+                TraceParent: OrderFleet.Application.Diagnostics.OrderFleetDiagnostics.CurrentTraceParent)));
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
             { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Couriers" or "PK_CourierPositions" })

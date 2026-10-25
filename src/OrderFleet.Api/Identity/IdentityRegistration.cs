@@ -59,6 +59,9 @@ public static class IdentityRegistration
                     PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                     AutoReplenishment = true
                 }));
+            options.AddPolicy("health", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
         });
         return services;
     }

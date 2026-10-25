@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics;
 using OrderFleet.Application.Messaging;
 
 namespace OrderFleet.Infrastructure.Messaging;
@@ -38,6 +39,7 @@ public static class EventEnvelopeCodec
         if (message.MessageId == Guid.Empty || message.AggregateId == Guid.Empty || message.Version != 1
             || !Types.Contains(message.Type) || message.OccurredAtUtc == default || message.OccurredAtUtc.Offset != TimeSpan.Zero
             || message.CorrelationId?.Length > 64 || message.PayloadJson is null || message.PayloadJson.Length > 60000
+            || (message.TraceParent is not null && (message.TraceParent.Length > 55 || !ActivityContext.TryParse(message.TraceParent, null, out _)))
             || (message.Type.StartsWith("order.", StringComparison.Ordinal) && message.AggregateSequence is not > 0))
             throw new InvalidDataException("Invalid event envelope.");
         using var payload = JsonDocument.Parse(message.PayloadJson, new JsonDocumentOptions { MaxDepth = 8 });

@@ -35,3 +35,5 @@ Messaging defaults enabled. Configure Messaging__Uri through User Secrets/enviro
 Local verification in this workspace uses the ignored .tools/dotnet SDK10.0.403/runtime10.0.14 (official archive SHA512 verified); the system SDK was preserved. If your PATH still selects older .NET, use `./.tools/dotnet/dotnet.exe` or install the patched SDK. Migration audit detects this local Windows SDK automatically and restores its process environment afterward. CI installs the SDK from global.json. See ADR-023 for the SignalR security patch evidence.
 
 SignalR /hubs/orders supports private owned subscriptions with live role/membership checks, expiry closure and reconnect snapshot refresh. GET /api/v1/orders/{id}/eta labels its approximation and stale-location fallback. This demo supports one API instance for realtime; multi-worker DB concurrency is separately verified. See ADR-022 for privacy and scale boundaries.
+
+Phase11 local gate passed:257 Domain +138 Integration,0 failed/skipped,16 migrations verified. Operations/health/telemetry/container policies are in ADR-024 and API contracts. Delivery/bootstrap/E2E documentation is the next required phase.

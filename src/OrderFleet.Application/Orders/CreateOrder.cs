@@ -8,6 +8,7 @@ using OrderFleet.Application.Identity;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
 using OrderFleet.Application.Payments;
+using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Application.Orders;
 
@@ -15,6 +16,7 @@ public sealed class CreateOrder(IOrderingStore store, OrderingPolicy policy, ICl
 {
     public async Task<Guid> ExecuteAsync(Actor actor, CreateOrderRequest request, string? key, CancellationToken cancellationToken)
     {
+        using var activity = OrderFleetDiagnostics.Activities.StartActivity("order.create");
         if (!actor.IsInRole(OrderFleetRoles.Customer)) throw new AccessDeniedException();
         Validate(request, key);
         var fingerprint = Fingerprint(request);

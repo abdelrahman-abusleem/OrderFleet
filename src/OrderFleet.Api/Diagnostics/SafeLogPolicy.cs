@@ -1,0 +1,42 @@
+using System.Diagnostics;
+using Serilog.Core;
+using Serilog.Events;
+
+namespace OrderFleet.Api.Diagnostics;
+
+public sealed class SafeLogPolicy : ILogEventFilter, ILogEventEnricher
+{
+    private static readonly HashSet<string> Templates =
+    [
+        "Recovery sweep failed {FailureType}", "Admin {ActorId} cancelled order {OrderId}",
+        "Admin {ActorId} read delivery for order {OrderId}", "Admin {ActorId} read order {OrderId}",
+        "HTTP {RequestMethod} {RoutePattern} returned {StatusCode} in {ElapsedMilliseconds}ms",
+        "Unhandled request failure {FailureType}; trace {TraceId}", "Request failed with {FailureType}; trace {TraceId}",
+        "Outbox lease expired for {MessageId}", "Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}",
+        "Outbox worker unavailable {FailureType}", "{Consumer} consumer unavailable {FailureType}",
+        "Operational metrics unavailable {FailureType}"
+    ];
+    private static readonly HashSet<string> Properties =
+    [
+        "SourceContext", "TraceId", "SpanId", "ActorId", "OrderId", "MessageId", "FailureType", "FailureCode", "Attempt",
+        "Consumer", "RequestMethod", "RoutePattern", "StatusCode", "ElapsedMilliseconds"
+    ];
+    public bool IsEnabled(LogEvent logEvent)
+    {
+        // Framework exception/SQL/request dumps are not an approved telemetry
+        // contract. Our boundary logs record controlled codes/types instead.
+        if (logEvent.Exception is not null || !Templates.Contains(logEvent.MessageTemplate.Text)) return false;
+        if (!logEvent.Properties.TryGetValue("SourceContext", out var property) || property is not ScalarValue { Value: string source }) return false;
+        return source.StartsWith("OrderFleet", StringComparison.Ordinal) || source == "OrderAccessAudit" || source == "Microsoft.Hosting.Lifetime";
+    }
+
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory factory)
+    {
+        foreach (var key in logEvent.Properties.Keys.Where(key => !Properties.Contains(key)).ToArray()) logEvent.RemovePropertyIfPresent(key);
+        if (Activity.Current is { } activity)
+        {
+            logEvent.AddPropertyIfAbsent(factory.CreateProperty("TraceId", activity.TraceId.ToString()));
+            logEvent.AddPropertyIfAbsent(factory.CreateProperty("SpanId", activity.SpanId.ToString()));
+        }
+    }
+}

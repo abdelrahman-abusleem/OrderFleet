@@ -13,6 +13,8 @@ using OrderFleet.Infrastructure.Messaging;
 using OrderFleet.Domain.Couriers;
 using OrderFleet.Infrastructure.Couriers;
 using OrderFleet.Infrastructure.Dispatch;
+using OrderFleet.Infrastructure.Operations;
+using OrderFleet.Infrastructure.Recovery;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -42,6 +44,9 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
     public DbSet<DispatchJob> DispatchJobs => Set<DispatchJob>();
     public DbSet<DispatchAttempt> DispatchAttempts => Set<DispatchAttempt>();
     public DbSet<CourierAssignment> CourierAssignments => Set<CourierAssignment>();
+    public DbSet<OperationRequest> OperationRequests => Set<OperationRequest>();
+    public DbSet<OperationAudit> OperationAudits => Set<OperationAudit>();
+    public DbSet<RecoveryWorkFailure> RecoveryWorkFailures => Set<RecoveryWorkFailure>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

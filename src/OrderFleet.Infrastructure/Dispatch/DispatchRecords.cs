@@ -16,6 +16,7 @@ public sealed class DispatchJob
         Attempts = 0; Status = "Pending"; NextAttemptAtUtc = now; CompletedAtUtc = null; AssignmentId = null;
     }
     internal void Finish(DateTimeOffset now) { Status = "Completed"; CompletedAtUtc = now; }
+    internal void RestartForOperator(DateTimeOffset now) { Restart(now); AssignmentCount = 0; }
     internal void Exhaust(DateTimeOffset now) { Status = "Exhausted"; CompletedAtUtc = now; }
     internal void Record(string outcome, DateTimeOffset now, int maxAttempts, Guid? assignmentId = null)
     {

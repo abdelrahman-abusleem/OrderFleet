@@ -14,6 +14,9 @@ using OrderFleet.Infrastructure.Messaging;
 using RabbitMQ.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using OrderFleet.Application.Realtime;
+using System.Diagnostics;
+using OpenTelemetry.Trace;
+using OpenTelemetry;
 using static OrderFleet.IntegrationTests.CatalogOrderingApiTests;
 
 namespace OrderFleet.IntegrationTests;
@@ -21,6 +24,53 @@ namespace OrderFleet.IntegrationTests;
 [Trait("Category", "RabbitMQ")]
 public sealed class RabbitDeliveryTests(PostgresFixture postgres, RabbitFixture rabbit) : IClassFixture<PostgresFixture>, IClassFixture<RabbitFixture>
 {
+    [Fact]
+    public async Task RealBroker_PreservesTraceParent_AndReadinessTracksOutage()
+    {
+        var options = Options();
+        var traces = new CapturedTraces();
+        await using var factory = new ApiFactory(postgres);
+        factory.Overrides["Messaging:Enabled"] = "true";
+        factory.Overrides["Messaging:Uri"] = options.Uri;
+        factory.Overrides["Messaging:Prefix"] = options.Prefix;
+        factory.Overrides["Recovery:Enabled"] = "true";
+        factory.CustomizeServices = services => services.AddOpenTelemetry().WithTracing(builder =>
+            builder.AddProcessor(new SimpleActivityExportProcessor(traces)));
+        using var owner = await ClientAsync(factory, "RestaurantOwner");
+        var (restaurant, product) = await CatalogAsync(owner);
+        using var customer = await ClientAsync(factory, "Customer");
+        Assert.Equal(HttpStatusCode.OK, (await customer.GetAsync("/health/ready")).StatusCode);
+        var traceId = ActivityTraceId.CreateRandom().ToString();
+        customer.DefaultRequestHeaders.Add("traceparent", $"00-{traceId}-00f067aa0ba902b7-01");
+        var created = await CreateAsync(customer, Request(restaurant, product), Guid.NewGuid().ToString("N"));
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.NoContent, (await customer.PostAsync($"/api/v1/orders/{id}/cancel", null)).StatusCode);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        OutboxMessage fact;
+        while (true)
+        {
+            await using var context = postgres.CreateContext();
+            fact = await context.OutboxMessages.SingleAsync(x => x.AggregateId == id && x.Type == "order.cancelled.v1", timeout.Token);
+            if (fact.PublishedAtUtc.HasValue && traces.Spans.Any(x => x.Kind == ActivityKind.Consumer
+                && x.Tags.GetValueOrDefault("messaging.message.id") == fact.Id.ToString("D"))) break;
+            await Task.Delay(50, timeout.Token);
+        }
+        Assert.True(ActivityContext.TryParse(fact.TraceParent, null, out var origin));
+        var published = Assert.Single(traces.Spans, span => span.Kind == ActivityKind.Producer
+            && span.Tags.GetValueOrDefault("messaging.message.id") == fact.Id.ToString("D"));
+        Assert.Equal(traceId, published.TraceId);
+        Assert.Equal(origin.SpanId.ToString(), published.ParentSpanId);
+        Assert.Contains(traces.Spans, span => span.Kind == ActivityKind.Consumer && span.TraceId == traceId
+            && span.ParentSpanId == published.SpanId && span.Tags.GetValueOrDefault("messaging.message.id") == fact.Id.ToString("D"));
+        await rabbit.StopAsync();
+        try
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (await customer.GetAsync("/health/ready")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await customer.GetAsync("/health/live")).StatusCode);
+        }
+        finally { await rabbit.StartAsync(); }
+    }
+
     [Fact]
     public async Task CommittedOrderEvent_ReachesAuthorizedSignalRClientThroughRealBroker()
     {

@@ -50,6 +50,17 @@ public static class OpenApiRegistration
             }
             if (context.Description.RelativePath?.EndsWith("/accept") == true)
                 operation.Responses.TryAdd("503", new OpenApiResponse { Description = "Retryable failure or uncertain payment outcome; the stable capture operation is reconciled on retry." });
+            if (context.Description.RelativePath?.StartsWith("api/v1/operations/", StringComparison.Ordinal) == true
+                && context.Description.HttpMethod == "POST")
+            {
+                operation.Parameters ??= [];
+                operation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "Idempotency-Key", In = ParameterLocation.Header, Required = true,
+                    Description = "Scoped to the administrator and operation. Reuse only for the same target.",
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 100 }
+                });
+            }
             return Task.CompletedTask;
         });
     });

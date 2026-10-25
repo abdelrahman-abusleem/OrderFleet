@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Application.Errors;
+using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Api.Errors;
 
@@ -24,7 +25,11 @@ public sealed class OrderFleetExceptionHandler(
             PaymentDeclinedException => StatusCodes.Status402PaymentRequired,
             _ => 0
         };
-        if (status == 0) return false;
+        if (status == 0)
+        {
+            logger.LogError("Unhandled request failure {FailureType}; trace {TraceId}", exception.GetType().Name, context.TraceIdentifier);
+            return false;
+        }
 
         logger.LogWarning("Request failed with {FailureType}; trace {TraceId}",
             exception.GetType().Name, context.TraceIdentifier);

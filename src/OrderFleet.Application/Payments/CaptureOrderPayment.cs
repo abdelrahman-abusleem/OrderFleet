@@ -2,6 +2,7 @@ using OrderFleet.Application.Clock;
 using OrderFleet.Application.Errors;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
+using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Application.Payments;
 
@@ -11,6 +12,7 @@ public sealed class CaptureOrderPayment(IPaymentStore payments, IPaymentProvider
 {
     public async Task ExecuteAsync(Order order, CancellationToken cancellationToken)
     {
+        using var activity = OrderFleetDiagnostics.Activities.StartActivity("payment.capture");
         var payment = await payments.FindAsync(order.Id, cancellationToken)
             ?? throw new OperationConflictException("Payment authorization is missing.");
         if (payment.Amount != order.TotalAmount || payment.Currency != order.Currency)

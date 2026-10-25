@@ -26,7 +26,7 @@ public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> c
             FROM candidates WHERE target."Id" = candidates."Id" RETURNING target.*
             """).AsNoTracking().ToArrayAsync(cancellationToken);
         return rows.OrderBy(x => x.Sequence).Select(x => new OutboxLease(leaseId,
-            new(x.Id, x.Type, x.Version, x.OccurredAtUtc, x.AggregateId, x.CorrelationId, x.PayloadJson, x.AggregateSequence), x.Attempts)).ToArray();
+            new(x.Id, x.Type, x.Version, x.OccurredAtUtc, x.AggregateId, x.CorrelationId, x.PayloadJson, x.AggregateSequence, x.TraceParent), x.Attempts)).ToArray();
     }
 
     public async Task<bool> CompleteAsync(OutboxLease lease, DateTimeOffset now, CancellationToken cancellationToken)

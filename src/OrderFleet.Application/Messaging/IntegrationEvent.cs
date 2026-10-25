@@ -2,11 +2,12 @@ using System.Diagnostics;
 using System.Text.Json;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
+using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Application.Messaging;
 
 public sealed record IntegrationEvent(Guid MessageId, string Type, int Version, DateTimeOffset OccurredAtUtc,
-    Guid AggregateId, string? CorrelationId, string PayloadJson, long? AggregateSequence = null);
+    Guid AggregateId, string? CorrelationId, string PayloadJson, long? AggregateSequence = null, string? TraceParent = null);
 
 public static class IntegrationEvents
 {
@@ -32,7 +33,7 @@ public static class IntegrationEvents
             previousAssignmentId = previousAssignment, reason = (fact as OrderCancelled)?.Reason.ToString()
         };
         return new(fact.EventId, type, 1, fact.OccurredAt.ToUniversalTime(), fact.OrderId,
-            Activity.Current?.TraceId.ToString(), JsonSerializer.Serialize(payload, Json));
+            Activity.Current?.TraceId.ToString(), JsonSerializer.Serialize(payload, Json), TraceParent: OrderFleetDiagnostics.CurrentTraceParent);
     }
 
     public static IntegrationEvent FromPayment(Payment payment, string type, DateTimeOffset now) =>
@@ -41,5 +42,5 @@ public static class IntegrationEvents
             {
                 paymentId = payment.Id, payment.OrderId, payment.AuthorizationId, payment.Amount,
                 payment.Currency, state = payment.State.ToString()
-            }, Json));
+            }, Json), TraceParent: OrderFleetDiagnostics.CurrentTraceParent);
 }

@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Options;
 using OrderFleet.Application.Messaging;
 using RabbitMQ.Client;
+using System.Diagnostics;
+using System.Text;
+using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
@@ -12,6 +15,11 @@ public sealed class RabbitEventPublisher(IOptions<RabbitOptions> options) : IEve
     public async Task PublishAsync(IntegrationEvent message, CancellationToken cancellationToken)
     {
         var bytes = EventEnvelopeCodec.Encode(message);
+        ActivityContext.TryParse(message.TraceParent, null, isRemote: true, out var parent);
+        using var activity = OrderFleetDiagnostics.Activities.StartActivity("messaging.publish", ActivityKind.Producer, parent);
+        activity?.SetTag("messaging.system", "rabbitmq");
+        activity?.SetTag("messaging.operation.type", "publish");
+        activity?.SetTag("messaging.message.id", message.MessageId.ToString("D"));
         await gate.WaitAsync(cancellationToken);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(options.Value.PublishTimeoutSeconds));
@@ -25,7 +33,8 @@ public sealed class RabbitEventPublisher(IOptions<RabbitOptions> options) : IEve
             var properties = new BasicProperties
             {
                 Persistent = true, ContentType = "application/json", MessageId = message.MessageId.ToString("D"),
-                Type = message.Type, CorrelationId = message.CorrelationId
+                Type = message.Type, CorrelationId = message.CorrelationId,
+                Headers = new Dictionary<string, object?> { ["traceparent"] = Encoding.ASCII.GetBytes(activity?.Id ?? message.TraceParent ?? "") }
             };
             // With confirmation tracking, await fails on broker nack or mandatory
             // return; only confirmed routed messages can complete their DB lease.

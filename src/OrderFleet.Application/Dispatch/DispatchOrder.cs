@@ -2,13 +2,26 @@ using OrderFleet.Application.Clock;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Identity;
 using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Diagnostics;
+using System.Diagnostics;
 
 namespace OrderFleet.Application.Dispatch;
 
 public sealed class DispatchOrder(IDispatchStore store, IClock clock, DispatchPolicy policy)
 {
-    public Task<DispatchOutcome> ExecuteAsync(Guid orderId, Guid? messageId, CancellationToken ct) =>
-        store.TryAssignAsync(orderId, messageId, clock.UtcNow, policy, ct);
+    public async Task<DispatchOutcome> ExecuteAsync(Guid orderId, Guid? messageId, CancellationToken ct)
+    {
+        using var activity = OrderFleetDiagnostics.Activities.StartActivity("dispatch.assign");
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            var outcome = await store.TryAssignAsync(orderId, messageId, clock.UtcNow, policy, ct);
+            activity?.SetTag("dispatch.outcome", outcome.ToString());
+            OrderFleetDiagnostics.DispatchResults.Add(1, new KeyValuePair<string, object?>("outcome", outcome.ToString()));
+            return outcome;
+        }
+        finally { OrderFleetDiagnostics.DispatchDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
 }
 
 public sealed class DispatchEventHandler(DispatchOrder dispatch) : IIntegrationEventHandler

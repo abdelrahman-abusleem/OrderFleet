@@ -12,6 +12,7 @@ public sealed class OutboxMessage
     public DateTimeOffset OccurredAtUtc { get; private set; }
     public Guid AggregateId { get; private set; }
     public string? CorrelationId { get; private set; }
+    public string? TraceParent { get; private set; }
     public string PayloadJson { get; private set; } = "";
     public DateTimeOffset? PublishedAtUtc { get; private set; }
     public Guid? LeaseId { get; private set; }
@@ -27,8 +28,14 @@ public sealed class OutboxMessage
         Id = message.MessageId; Type = message.Type; Version = message.Version;
         OccurredAtUtc = message.OccurredAtUtc; AggregateId = message.AggregateId;
         CorrelationId = message.CorrelationId; PayloadJson = message.PayloadJson;
+        TraceParent = message.TraceParent;
         AggregateSequence = message.AggregateSequence;
         NextAttemptAtUtc = message.OccurredAtUtc;
+    }
+    internal void ResetForRetry(DateTimeOffset now)
+    {
+        Attempts = 0; DeadLetteredAtUtc = null; LastErrorCode = null;
+        LeaseId = null; LeasedUntilUtc = null; NextAttemptAtUtc = now;
     }
 }
 

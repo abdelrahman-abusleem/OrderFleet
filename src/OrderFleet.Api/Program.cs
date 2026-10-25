@@ -10,8 +10,16 @@ using OrderFleet.Api.Realtime;
 using OrderFleet.Application.Eta;
 using OrderFleet.Application.Identity;
 using System.Security.Claims;
+using OrderFleet.Api.Diagnostics;
 
-var builder = WebApplication.CreateBuilder(args);
+if (args.Length == 1 && args[0] == "--health-check")
+{
+    Environment.ExitCode = await ContainerHealthProbe.ExecuteAsync();
+    return;
+}
+var migrateOnly = args.Contains("--migrate", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--migrate").ToArray());
+builder.AddOrderTelemetry();
 
 var connectionString = builder.Configuration
     .GetConnectionString("OrderFleet")
@@ -19,7 +27,13 @@ var connectionString = builder.Configuration
         "OrderFleet connection string is missing.");
 
 builder.Services.AddDbContextFactory<OrderFleetDbContext>(
-    options => options.UseNpgsql(connectionString, postgres => postgres.UseNetTopologySuite()));
+    options => options.UseNpgsql(connectionString, postgres =>
+    {
+        postgres.UseNetTopologySuite();
+        postgres.ConfigureDataSource(source => source.ConfigureTracing(trace => trace
+            .ConfigureCommandSpanNameProvider(_ => "postgresql.command")
+            .ConfigureBatchSpanNameProvider(_ => "postgresql.batch").EnableFirstResponseEvent(false)));
+    }));
 
 builder.Services.AddOrderFleetOpenApi();
 builder.Services.AddProblemDetails();
@@ -32,12 +46,22 @@ builder.Services.AddDispatch(builder.Configuration);
 builder.Services.AddRecovery(builder.Configuration);
 builder.Services.AddEta(builder.Configuration);
 builder.Services.AddOrderRealtime();
+builder.Services.AddOperations();
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Warning);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<SafeExceptionListener>();
+if (migrateOnly)
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<OrderFleetDbContext>().Database.MigrateAsync();
+    Console.WriteLine("Database migrations applied.");
+    return;
+}
+app.UseMiddleware<SafeRequestLogging>();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
@@ -45,7 +69,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     app.MapOpenApi().AllowAnonymous();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing")) app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -55,6 +79,8 @@ app.MapCatalogEndpoints();
 app.MapOrderWriteEndpoints();
 app.MapCourierEndpoints();
 app.MapDispatchEndpoints();
+app.MapOperationsEndpoints();
+app.MapHealth();
 app.MapHub<OrdersHub>("/hubs/orders", options =>
     { options.CloseOnAuthenticationExpiration = true; options.AllowStatefulReconnects = false; })
     .RequireAuthorization(policy => policy.RequireRole(OrderFleetRoles.All));

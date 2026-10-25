@@ -27,4 +27,16 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     public async Task DisposeAsync() => await container.DisposeAsync();
+    internal Task StopAsync() => container.StopAsync();
+    internal async Task RestartAsync()
+    {
+        await container.StartAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (true)
+        {
+            try { await using var context = CreateContext(); if (await context.Database.CanConnectAsync(timeout.Token)) return; }
+            catch when (!timeout.IsCancellationRequested) { }
+            await Task.Delay(100, timeout.Token);
+        }
+    }
 }

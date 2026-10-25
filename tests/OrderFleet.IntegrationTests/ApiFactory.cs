@@ -35,7 +35,9 @@ internal sealed class ApiFactory(PostgresFixture postgres, TimeProvider? clock =
                 ["Jwt:SigningKey"] = SigningKey,
                 ["Jwt:LifetimeMinutes"] = "15",
                 ["Messaging:Enabled"] = "false",
-                ["Recovery:Enabled"] = "false"
+                ["Recovery:Enabled"] = "false",
+                ["Telemetry:Exporter"] = "None",
+                ["Telemetry:TraceSamplingRatio"] = "1"
             }).AddInMemoryCollection(Overrides));
     }
 }

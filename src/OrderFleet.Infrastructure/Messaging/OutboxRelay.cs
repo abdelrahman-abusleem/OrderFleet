@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrderFleet.Application.Clock;
 using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
@@ -17,6 +18,8 @@ public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, I
             try
             {
                 await publisher.PublishAsync(lease.Message, cancellationToken);
+                OrderFleetDiagnostics.OutboxPublished.Add(1);
+                OrderFleetDiagnostics.OutboxLag.Record(Math.Max(0, (clock.UtcNow - lease.Message.OccurredAtUtc).TotalSeconds));
                 if (!await store.CompleteAsync(lease, clock.UtcNow, cancellationToken))
                     logger.LogWarning("Outbox lease expired for {MessageId}", lease.Message.MessageId);
             }
@@ -24,6 +27,7 @@ public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, I
             catch (Exception error)
             {
                 var code = error is InvalidDataException or System.Text.Json.JsonException ? "InvalidEnvelope" : "BrokerUnavailable";
+                OrderFleetDiagnostics.OutboxRetries.Add(1, new KeyValuePair<string, object?>("reason", code));
                 await store.FailAsync(lease, clock.UtcNow, code, code == "InvalidEnvelope" ? 1 : settings.OutboxMaxAttempts, cancellationToken);
                 logger.LogWarning("Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}", lease.Message.MessageId, code, lease.Attempts);
             }
