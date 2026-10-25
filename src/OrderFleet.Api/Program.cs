@@ -2,6 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Infrastructure.Persistence;
 using OrderFleet.Api.Errors;
+using OrderFleet.Api.Identity;
+using OrderFleet.Api.Endpoints;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +19,9 @@ builder.Services.AddDbContext<OrderFleetDbContext>(
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<OrderFleetExceptionHandler>();
+builder.Services.AddOrderFleetIdentity(builder.Configuration);
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -26,6 +32,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+app.MapIdentityEndpoints();
+app.MapOrderReadEndpoints();
 
 var summaries = new[]
 {
@@ -59,3 +70,5 @@ record WeatherForecast(
     public int TemperatureF =>
         32 + (int)(TemperatureC / 0.5556);
 }
+
+public partial class Program;

@@ -25,8 +25,8 @@
 | 1.5 Approved Domain additions (ADR-013) | VERIFIED_COMPLETE locally | 234 Domain passed; baseline commit 062e3ad | remote CI unverified | complete |
 | 2A Persistence | VERIFIED locally / external CI UNVERIFIED | 18 real PostgreSQL cases + disposable migration CLI | no remote configured by owner instruction | preserve evidence, execute CI when owner enables remote |
 | 2B Concurrency | VERIFIED_COMPLETE locally | 11 DB conflicts + 4 HTTP error boundary cases | remote CI unverified | proceed to Identity |
-| 3 Identity | NOT_VERIFIED | — | — | after 2B |
-| 4 Catalog + Orders API | NOT_VERIFIED | — | — | after Identity |
+| 3 Identity | VERIFIED_COMPLETE locally | 17 real HTTP/JWT/DB security cases | remote CI unverified | proceed to catalog/order commands |
+| 4 Catalog + Orders API | IN_PROGRESS | ADR-015 owner-approved; identity/read boundary ready | none | trusted pricing, destinations, deadlines, idempotency |
 | 5 Payments | NOT_VERIFIED | — | — | after order flow |
 | 6 Couriers + Geo | NOT_VERIFIED | — | — | after core order flow |
 | 7 Outbox + RabbitMQ | NOT_VERIFIED | — | — | after events defined |
@@ -54,6 +54,18 @@
 ```
 
 ## Blocking rule
+
+### 2026-10-25 — Phase 3 Identity local phase report
+
+- Branch phase/3-identity from Phase 2B commit fbab9a8. Tests first failed on missing Identity capabilities. Added real ASP.NET Core Identity users/roles/password hashing and unique normalized email/username indexes; customer-only public registration with unknown JSON fields rejected. User creation and Customer role grant share a DB transaction; concurrent duplicates return the same public accepted response.
+- Login uses Identity password verification, 5-failure/15-minute account lockout, and a 10-per-minute per-IP credential limiter. JWT HS256 access tokens default to 15 minutes, require issuer/audience/signature/lifetime/algorithm/nonempty Guid subject, 30-second clock skew, and secret key >=32 bytes from configuration. No refresh tokens or cookie UI. Unknown-user login performs a dummy password hash check; errors do not distinguish unknown/incorrect credentials.
+- Added thin register/login/me endpoints and an authorized order-read use case/EF adapter. Actor comes from verified claims; role and resource ownership are independent requirements. Customer identity, restaurant membership, or current courier assignment gates reads; foreign and missing order IDs return the same 404. Admin reads are explicitly logged with IDs only. Membership removal denies an existing token immediately. Role claims otherwise remain valid until access-token expiry (documented ADR-010 limitation).
+- Additive migration creates Identity tables, deterministic role seed rows (no users/passwords), and user-owned restaurant grants. Restaurant FK will be added with the actual catalog module; no restaurant table is fabricated here. All five migrations applied via CLI to a separate disposable PostgreSQL container. Developer DB untouched.
+- `dotnet build OrderFleet.slnx -c Release --no-restore`: 0 warnings/errors. `./scripts/Verify-Migrations.ps1`: passed, five migrations recorded. `dotnet test OrderFleet.slnx -c Release --no-build --no-restore`: 234 Domain + 51 Integration passed, 0 failed/skipped (29 real PostgreSQL + 17 real HTTP/JWT/Identity DB + 4 error middleware + 1 original placeholder).
+- Security review: verified weak-password outcomes independent of account existence (added regression, passed without production change); parallel registration produces one Customer account; tested invalid signature/issuer/audience/expiry/not-before/subject, role injection, no-token/wrong-role, cross-customer/restaurant/courier reads, revocation, hashed storage, lockout and rate limiting. No new P0/P1 finding left. Reviewed Up/Down/indexes/seed determinism, options validation, error privacy and DB query cancellation. UserManager's own APIs lack CancellationToken; command boundaries check cancellation, transactions/EF read adapters pass it through.
+- Package audit with transitive dependencies reported no known vulnerabilities from configured sources. Domain still has no EF/HTTP/JWT dependencies. No secrets written to tracked config or test logs. API test signing keys/passwords generated per run.
+- Owner explicitly accepted ADR-015 delivery coordinates/privacy, active flag, configurable five-minute persisted deadline with inline expiry enforcement, and capture-before-dispatch while preserving ADR-008. Recorded complete decision in docs/08.
+- Phase 3 local gate passed; remote CI unverified/no push. Next: Phase 4 catalog and idempotent create/accept/cancel, delivery info and persisted deadline; later payment, geo, Outbox/RabbitMQ, dispatch, recovery, realtime/ETA and observability remain required.
 
 ### 2026-10-25 — Phase 2B HTTP conflict boundary and local phase report
 

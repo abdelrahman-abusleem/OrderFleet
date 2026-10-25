@@ -12,6 +12,8 @@ public sealed class PostgresFixture : IAsyncLifetime
         .WithPassword(Guid.NewGuid().ToString("N"))
         .Build();
 
+    internal string ConnectionString => container.GetConnectionString();
+
     public OrderFleetDbContext CreateContext() => new(
         new DbContextOptionsBuilder<OrderFleetDbContext>()
             .UseNpgsql(container.GetConnectionString()).Options);

@@ -4,7 +4,7 @@ A .NET 10 restaurant ordering and courier dispatch backend, built as a modular m
 
 ## Current status
 
-2026-10-25: baseline audited; approved domain additions implemented. Release build passes; 234 Domain tests, 29 PostgreSQL tests and 4 HTTP error-boundary tests pass (plus one retained Integration placeholder). Migration CLI verified against a disposable database. PostgreSQL xmin conflict/stale-fence protection and safe HTTP 409 mapping pass. Identity is next; catalog, payments, dispatch, messaging, realtime, ETA and observability remain required and are not implemented yet.
+2026-10-25: Domain additions, real PostgreSQL persistence/concurrency, safe error mapping, Identity/JWT and authorized order reads are implemented. Release build passes; 234 Domain + 51 Integration tests pass (includes one retained historical placeholder). Migration CLI verified against disposable PostgreSQL. Catalog/order commands are next; payments, dispatch, messaging, realtime, ETA and observability remain required and are not implemented yet.
 
 This folder arrived without Git metadata. The owner authorized local Git initialization after parent-repository and credential checks. No remote is configured and no remote CI run has been verified.
 
@@ -18,6 +18,10 @@ This folder arrived without Git metadata. The owner authorized local Git initial
 
 ## Running locally
 
-The API currently contains the original weather template, not the ordering workflow. Configure `ConnectionStrings:OrderFleet` through User Secrets or the `ConnectionStrings__OrderFleet` environment variable. Never commit database credentials. The existing Compose PostgreSQL container/data volume is preserved; do not run destructive volume cleanup.
+Configure `ConnectionStrings:OrderFleet`, `Jwt:Issuer`, `Jwt:Audience` and `Jwt:SigningKey` through User Secrets or environment variables (double underscores replace colons). The signing key must contain at least 32 random bytes; no usable default is supplied. Tokens default to 15 minutes with 30 seconds of clock skew; no refresh tokens. Public registration grants Customer only. Privileged demo provisioning comes later; never expose a client-selected role.
+
+Current endpoints: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/auth/me`, `GET /api/v1/orders/{id}`. Order reads require actor ownership/membership/current courier assignment; unauthorized resources use privacy-aware 404. Credentials are rate-limited; five failed logins lock the account for 15 minutes. Role revocation takes effect at token expiry; restaurant membership is checked live. Email verification, refresh tokens and production identity governance are not claimed.
+
+The original weather template remains but is protected by deny-by-default authentication. The complete ordering workflow is under implementation. Never commit database credentials. Existing Compose PostgreSQL data is preserved; do not run destructive volume cleanup. All tested migrations have been applied only to disposable databases, not the developer database.
 
 See [the engineering contract](docs/00_START_HERE.md), [roadmap](docs/04_EXECUTION_ROADMAP.md), and [verified progress](docs/07_PROGRESS_AND_HANDOFF.md).

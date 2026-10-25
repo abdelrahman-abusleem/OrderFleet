@@ -1,5 +1,17 @@
 # Learning guide and technical-review syllabus
 
+## Implemented: Identity and resource authorization (Phase 3)
+
+`Application/Identity/IdentityContracts.cs` defines the credential port and actor/roles. Infrastructure's `IdentityAccounts` adapts ASP.NET Core Identity: no custom password cryptography; account + Customer grant commit together. Identity table constraints arbitrate concurrent registration. The public API never accepts a requested privileged role, and registration does not reveal duplicate accounts. Login error titles are uniform. Lockout and per-IP throttling address different attack paths.
+
+`Api/Identity` issues short-lived JWTs and validates signature, algorithm, issuer, audience, lifetime and Guid subject. Signing material comes from configuration and is startup-validated; tests generate their own keys. No refresh/revocation infrastructure is implied. Membership is rechecked in the database on each resource read, while an already-issued role claim persists until token expiry.
+
+`Application/Orders/GetOrder.cs` owns resource-access decisions. `EfOrderReadStore` reads real data; `OrderReadEndpoints` derives Actor from authenticated claims and emits only the authorized response. A valid role alone is insufficient. Customer must match order.CustomerId, restaurant users need a grant, courier must match the current assignment, and admin access is explicitly audited. Foreign and nonexistent resources both return 404 to prevent resource enumeration.
+
+`IdentityApiTests` exercises real JWT middleware and PostgreSQL Identity stores. It verifies hashing/login, duplicate account races, privilege injection, invalid claims/times/keys, ownership, revoked membership, lockout and throttling. `ApiFactory` uses per-run test keys and the fixture connection only. Run `dotnet test tests/OrderFleet.IntegrationTests -c Release --filter FullyQualifiedName~IdentityApiTests` (17 passing at phase gate). Full suite: 234 Domain + 51 Integration. No fake authentication handler substitutes for signature validation.
+
+Review prompts: How does role differ from ownership? Why does a unique DB index matter after validation? Which updates share the registration transaction? Why can an old JWT retain a role after revocation? Why is membership checked again? What response avoids revealing foreign order existence? How do hash, lockout and throttling protect different failure modes?
+
 ## Implemented: ADR-013 domain additions (2026-10-25)
 
 ### Verified PostgreSQL behavior (Phase 2A)

@@ -70,6 +70,15 @@
 
 ## ADR template
 
+### ADR-015 — ACCEPTED (owner, 2026-10-25): delivery information, availability and persisted deadlines
+
+- Customer supplies required delivery latitude/longitude on create. Validate finite range (latitude -90..90, longitude -180..180), persist linked private order delivery information. No precise destination in public responses, logs/traces or unrestricted events. Authorized participant access only. This does not add unapproved members to the established Order aggregate; delivery information has a separate persistence model linked by OrderId.
+- Restaurant has an active flag and product has availability; only active restaurants/available products can create new orders. No opening-hours/zone engine in demo. PostGIS discovery remains mandatory.
+- Acceptance timeout defaults to 5 minutes and is configurable. Deadline derives from Order.CreatedAt in UTC and is persisted for restart recovery. Acceptance must reject elapsed deadlines even if the worker has not run; timeout/acceptance race uses DB concurrency and established AcceptanceTimedOut cancellation, idempotent processing and ADR-008 compensation.
+- Dispatch is permitted only after successful capture; capture still occurs during acceptance as ADR-008 requires. Duplicate callbacks/captures/concurrent dispatch must remain safe. No new OrderStatus/reason.
+- Tradeoffs: approximate customer-supplied destination, simple availability and explicit privacy rather than a zone/address engine. Deadline and payment readiness belong in Application orchestration/persistence; Domain state machine stays intact. Tests will cover missing/invalid coordinates, cross-user privacy, expired accept, races and restart recovery.
+- Approval: explicit owner reply to the policy question, including mandatory implementation details. These clarify scope without removing any roadmap feature.
+
 ### ADR-014 — ACCEPTED: preserve the Domain monetary range in persistence
 
 - Date: 2026-10-25; implementation compatibility choice, no business-rule changes.
