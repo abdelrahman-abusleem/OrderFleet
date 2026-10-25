@@ -56,7 +56,9 @@ public static class IdentityRegistration
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
                     AutoReplenishment = true
                 }));
             options.AddPolicy("health", context => RateLimitPartition.GetFixedWindowLimiter(
@@ -72,13 +74,19 @@ public static class IdentityRegistration
         options.IncludeErrorDetails = false;
         options.TokenValidationParameters = new()
         {
-            ValidateIssuer = true, ValidIssuer = jwt.Issuer,
-            ValidateAudience = true, ValidAudience = jwt.Audience,
-            ValidateIssuerSigningKey = true, RequireSignedTokens = true,
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            RequireSignedTokens = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
             ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
-            ValidateLifetime = true, RequireExpirationTime = true, ClockSkew = TimeSpan.FromSeconds(30),
-            NameClaimType = "sub", RoleClaimType = "role"
+            ValidateLifetime = true,
+            RequireExpirationTime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            NameClaimType = "sub",
+            RoleClaimType = "role"
         };
         options.Events = new JwtBearerEvents
         {

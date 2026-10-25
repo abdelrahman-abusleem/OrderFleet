@@ -15,7 +15,9 @@ public static class OpenApiRegistration
             document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
             document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
             {
-                Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT"
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
             };
             document.Security = [new OpenApiSecurityRequirement
                 { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }];
@@ -43,7 +45,9 @@ public static class OpenApiRegistration
                 operation.Parameters ??= [];
                 operation.Parameters.Add(new OpenApiParameter
                 {
-                    Name = "Idempotency-Key", In = ParameterLocation.Header, Required = true,
+                    Name = "Idempotency-Key",
+                    In = ParameterLocation.Header,
+                    Required = true,
                     Description = "Scoped to the authenticated customer and order creation. Reuse only for the same request.",
                     Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 100 }
                 });
@@ -56,7 +60,9 @@ public static class OpenApiRegistration
                 operation.Parameters ??= [];
                 operation.Parameters.Add(new OpenApiParameter
                 {
-                    Name = "Idempotency-Key", In = ParameterLocation.Header, Required = true,
+                    Name = "Idempotency-Key",
+                    In = ParameterLocation.Header,
+                    Required = true,
                     Description = "Scoped to the administrator and operation. Reuse only for the same target.",
                     Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 100 }
                 });

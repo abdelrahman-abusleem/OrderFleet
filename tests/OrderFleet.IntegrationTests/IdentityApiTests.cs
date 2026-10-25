@@ -168,7 +168,7 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         using var client = factory.CreateClient(new() { BaseAddress = new("https://localhost") });
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
         client.DefaultRequestHeaders.Authorization = new("Bearer", Token(factory, Guid.NewGuid(), "Visitor"));
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/v1/orders/{Guid.NewGuid()}" )).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/v1/orders/{Guid.NewGuid()}")).StatusCode);
     }
 
     [Theory]

@@ -32,7 +32,7 @@ public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock) : 
                 TraceParent: OrderFleet.Application.Diagnostics.OrderFleetDiagnostics.CurrentTraceParent)));
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Couriers" or "PK_CourierPositions" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Couriers" or "PK_CourierPositions" })
         {
             throw new OperationConflictException("Courier profile changed concurrently; refresh before retrying.");
         }

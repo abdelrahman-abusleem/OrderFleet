@@ -10,9 +10,11 @@ public sealed class RabbitSession(IConnection connection, IChannel channel) : IA
     {
         var factory = new ConnectionFactory
         {
-            Uri = new Uri(options.Uri), AutomaticRecoveryEnabled = false,
+            Uri = new Uri(options.Uri),
+            AutomaticRecoveryEnabled = false,
             RequestedConnectionTimeout = TimeSpan.FromSeconds(options.PublishTimeoutSeconds),
-            RequestedHeartbeat = TimeSpan.FromSeconds(30), ConsumerDispatchConcurrency = 1
+            RequestedHeartbeat = TimeSpan.FromSeconds(30),
+            ConsumerDispatchConcurrency = 1
         };
         var connection = await factory.CreateConnectionAsync("OrderFleet", ct);
         try

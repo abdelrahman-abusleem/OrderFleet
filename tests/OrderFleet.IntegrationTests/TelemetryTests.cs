@@ -29,7 +29,7 @@ public sealed class TelemetryTests(PostgresFixture fixture) : IClassFixture<Post
         var (restaurant, product) = await CatalogAsync(owner);
         using var customer = await ClientAsync(factory, "Customer");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/orders")
-            { Content = JsonContent.Create(Request(restaurant, product)) };
+        { Content = JsonContent.Create(Request(restaurant, product)) };
         request.Headers.Add("Request-Id", "|" + new string('a', 500) + ".");
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
         var response = await customer.SendAsync(request);
@@ -64,7 +64,7 @@ public sealed class TelemetryTests(PostgresFixture fixture) : IClassFixture<Post
         const string secret = "never-export-this-private-marker";
         const string traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/orders?access_token=" + secret)
-            { Content = JsonContent.Create(Request(restaurant, product)) };
+        { Content = JsonContent.Create(Request(restaurant, product)) };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
         request.Headers.Add("traceparent", $"00-{traceId}-00f067aa0ba902b7-01");
         request.Headers.Add("baggage", "private=" + secret);

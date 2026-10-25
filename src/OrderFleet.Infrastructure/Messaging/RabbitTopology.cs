@@ -35,17 +35,23 @@ public static class RabbitTopology
         await channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false,
             arguments: new Dictionary<string, object?>
             {
-                ["x-queue-type"] = "quorum", ["x-delivery-limit"] = 20,
-                ["x-dead-letter-exchange"] = "", ["x-dead-letter-routing-key"] = Dead(queue),
-                ["x-dead-letter-strategy"] = "at-least-once", ["x-overflow"] = "reject-publish"
+                ["x-queue-type"] = "quorum",
+                ["x-delivery-limit"] = 20,
+                ["x-dead-letter-exchange"] = "",
+                ["x-dead-letter-routing-key"] = Dead(queue),
+                ["x-dead-letter-strategy"] = "at-least-once",
+                ["x-overflow"] = "reject-publish"
             }, cancellationToken: ct);
         for (var index = 0; index < RetryDelaysMilliseconds.Length; index++)
             await channel.QueueDeclareAsync(Retry(queue, index + 1), durable: true, exclusive: false, autoDelete: false,
                 arguments: new Dictionary<string, object?>
                 {
                     ["x-message-ttl"] = RetryDelaysMilliseconds[index],
-                    ["x-dead-letter-exchange"] = "", ["x-dead-letter-routing-key"] = queue,
-                    ["x-queue-type"] = "quorum", ["x-dead-letter-strategy"] = "at-least-once", ["x-overflow"] = "reject-publish"
+                    ["x-dead-letter-exchange"] = "",
+                    ["x-dead-letter-routing-key"] = queue,
+                    ["x-queue-type"] = "quorum",
+                    ["x-dead-letter-strategy"] = "at-least-once",
+                    ["x-overflow"] = "reject-publish"
                 }, cancellationToken: ct);
     }
 }

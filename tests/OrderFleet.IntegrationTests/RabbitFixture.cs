@@ -20,7 +20,9 @@ public sealed class RabbitFixture : IAsyncLifetime
             {
                 var factory = new RabbitMQ.Client.ConnectionFactory
                 {
-                    Uri = new Uri(ConnectionString), RequestedConnectionTimeout = TimeSpan.FromSeconds(2), AutomaticRecoveryEnabled = false
+                    Uri = new Uri(ConnectionString),
+                    RequestedConnectionTimeout = TimeSpan.FromSeconds(2),
+                    AutomaticRecoveryEnabled = false
                 };
                 await using var connection = await factory.CreateConnectionAsync(timeout.Token);
                 return;

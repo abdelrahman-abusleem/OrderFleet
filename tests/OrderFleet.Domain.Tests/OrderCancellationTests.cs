@@ -71,12 +71,12 @@ public class OrderCancellationTests
         yield return [OrderStatus.Assigned, CancellationReason.AcceptanceTimedOut];
         yield return [OrderStatus.Assigned, CancellationReason.RestaurantCancelled];
         foreach (var status in new[] { OrderStatus.PickedUp, OrderStatus.Delivered, OrderStatus.Cancelled })
-        foreach (var reason in Enum.GetValues<CancellationReason>())
-            yield return [status, reason];
+            foreach (var reason in Enum.GetValues<CancellationReason>())
+                yield return [status, reason];
 
         foreach (var status in Enum.GetValues<OrderStatus>())
-        foreach (var reason in new[] { 0, -1, 6, int.MinValue, int.MaxValue })
-            yield return [status, (CancellationReason)reason];
+            foreach (var reason in new[] { 0, -1, 6, int.MinValue, int.MaxValue })
+                yield return [status, (CancellationReason)reason];
     }
 
     [Theory]

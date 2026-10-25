@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Domain.Orders;
 using Microsoft.AspNetCore.Identity;
@@ -68,7 +68,8 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
         modelBuilder.Entity<IdentityRole<Guid>>().HasData(OrderFleetRoles.All.Select((role, index) =>
             new IdentityRole<Guid>(role)
             {
-                Id = Guid.Parse(roleIds[index]), NormalizedName = role.ToUpperInvariant(),
+                Id = Guid.Parse(roleIds[index]),
+                NormalizedName = role.ToUpperInvariant(),
                 ConcurrencyStamp = roleIds[index]
             }));
 

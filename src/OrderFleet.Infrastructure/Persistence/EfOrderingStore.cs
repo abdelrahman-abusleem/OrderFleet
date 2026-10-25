@@ -65,7 +65,7 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
             OutboxEventWriter.ClearCommitted(staged);
         }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_OrderCreationRequests" or "IX_Payments_AuthorizationId" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_OrderCreationRequests" or "IX_Payments_AuthorizationId" })
         {
             await transaction.RollbackAsync(cancellationToken);
             context.ChangeTracker.Clear();
@@ -91,7 +91,7 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
         var staged = new OutboxEventWriter(context).StageOrderFacts();
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_OutboxMessages_AggregateId_AggregateSequence" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_OutboxMessages_AggregateId_AggregateSequence" })
         {
             // EF may insert the event before updating the root's xmin. Two stale
             // writers therefore collide on the event sequence before the root CAS.
@@ -108,45 +108,45 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
     private async Task SynchronizeCourierCapacityAsync(IEnumerable<Order> orders, CancellationToken ct)
     {
         foreach (var order in orders)
-        foreach (var fact in order.DomainEvents)
-        {
-            (Guid CourierId, Guid AssignmentId)? references = fact switch
+            foreach (var fact in order.DomainEvents)
             {
-                AssignmentReleased x => (x.PreviousCourierId, x.PreviousAssignmentId),
-                OrderCancelled { PreviousCourierId: not null, PreviousAssignmentId: not null } x => (x.PreviousCourierId.Value, x.PreviousAssignmentId.Value),
-                OrderDelivered x => (x.CourierId, x.AssignmentId),
-                _ => null
-            };
-            if (references.HasValue)
-            {
-                var courier = await context.Couriers.FromSqlInterpolated(
-                    $"SELECT *, xmin FROM \"Couriers\" WHERE \"Id\" = {references.Value.CourierId} FOR UPDATE").SingleOrDefaultAsync(ct);
-                // Standalone legacy Order persistence does not require a Courier
-                // profile. Application dispatch/transition paths always require it.
-                courier?.Release(order.Id, references.Value.AssignmentId);
+                (Guid CourierId, Guid AssignmentId)? references = fact switch
+                {
+                    AssignmentReleased x => (x.PreviousCourierId, x.PreviousAssignmentId),
+                    OrderCancelled { PreviousCourierId: not null, PreviousAssignmentId: not null } x => (x.PreviousCourierId.Value, x.PreviousAssignmentId.Value),
+                    OrderDelivered x => (x.CourierId, x.AssignmentId),
+                    _ => null
+                };
+                if (references.HasValue)
+                {
+                    var courier = await context.Couriers.FromSqlInterpolated(
+                        $"SELECT *, xmin FROM \"Couriers\" WHERE \"Id\" = {references.Value.CourierId} FOR UPDATE").SingleOrDefaultAsync(ct);
+                    // Standalone legacy Order persistence does not require a Courier
+                    // profile. Application dispatch/transition paths always require it.
+                    courier?.Release(order.Id, references.Value.AssignmentId);
+                }
+                if (fact is AssignmentReleased or OrderCancelled or OrderDelivered)
+                {
+                    var job = await context.DispatchJobs.SingleOrDefaultAsync(x => x.OrderId == order.Id, ct);
+                    if (fact is AssignmentReleased) job?.Restart(fact.OccurredAt.ToUniversalTime());
+                    else job?.Finish(fact.OccurredAt.ToUniversalTime());
+                }
+                var assignmentId = fact switch
+                {
+                    OrderPickedUp x => x.AssignmentId,
+                    AssignmentReleased x => x.PreviousAssignmentId,
+                    OrderCancelled x => x.PreviousAssignmentId,
+                    OrderDelivered x => x.AssignmentId,
+                    _ => (Guid?)null
+                };
+                if (assignmentId.HasValue)
+                {
+                    var assignment = await context.CourierAssignments.SingleOrDefaultAsync(x => x.Id == assignmentId && x.OrderId == order.Id, ct);
+                    if (fact is OrderPickedUp) assignment?.RecordPickup(fact.OccurredAt.ToUniversalTime());
+                    else if (fact is OrderDelivered) assignment?.RecordDelivery(fact.OccurredAt.ToUniversalTime());
+                    else assignment?.RecordRelease(fact.OccurredAt.ToUniversalTime());
+                }
             }
-            if (fact is AssignmentReleased or OrderCancelled or OrderDelivered)
-            {
-                var job = await context.DispatchJobs.SingleOrDefaultAsync(x => x.OrderId == order.Id, ct);
-                if (fact is AssignmentReleased) job?.Restart(fact.OccurredAt.ToUniversalTime());
-                else job?.Finish(fact.OccurredAt.ToUniversalTime());
-            }
-            var assignmentId = fact switch
-            {
-                OrderPickedUp x => x.AssignmentId,
-                AssignmentReleased x => x.PreviousAssignmentId,
-                OrderCancelled x => x.PreviousAssignmentId,
-                OrderDelivered x => x.AssignmentId,
-                _ => (Guid?)null
-            };
-            if (assignmentId.HasValue)
-            {
-                var assignment = await context.CourierAssignments.SingleOrDefaultAsync(x => x.Id == assignmentId && x.OrderId == order.Id, ct);
-                if (fact is OrderPickedUp) assignment?.RecordPickup(fact.OccurredAt.ToUniversalTime());
-                else if (fact is OrderDelivered) assignment?.RecordDelivery(fact.OccurredAt.ToUniversalTime());
-                else assignment?.RecordRelease(fact.OccurredAt.ToUniversalTime());
-            }
-        }
     }
     public void RecordAudit(Guid actorId, Guid orderId, string action, DateTimeOffset occurredAt) =>
         context.OrderAuditEntries.Add(new(actorId, orderId, action, occurredAt));

@@ -32,7 +32,7 @@ public sealed class DurableMockPaymentProvider(IDbContextFactory<OrderFleetDbCon
         context.MockPaymentEffects.Add(new(authorization.Id, "Authorize", authorization.State == ProviderPaymentState.Authorized, now));
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_MockPaymentAuthorizations_ActorId_Key" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_MockPaymentAuthorizations_ActorId_Key" })
         {
             await using var fresh = await contexts.CreateDbContextAsync(cancellationToken);
             var winner = await fresh.MockPaymentAuthorizations.AsNoTracking()

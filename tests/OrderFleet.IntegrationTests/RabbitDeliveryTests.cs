@@ -225,7 +225,9 @@ public sealed class RabbitDeliveryTests(PostgresFixture postgres, RabbitFixture 
         await processor.ProcessAsync(session.Channel, queue, retried.DeliveryTag, retried.BasicProperties, retried.Body, actual, CancellationToken.None);
         var exhausted = new BasicProperties
         {
-            Persistent = true, MessageId = message.MessageId.ToString("D"), Type = message.Type,
+            Persistent = true,
+            MessageId = message.MessageId.ToString("D"),
+            Type = message.Type,
             Headers = new Dictionary<string, object?> { ["x-retry-attempt"] = 4 }
         };
         await session.Channel.BasicPublishAsync("", queue, true, exhausted, EventEnvelopeCodec.Encode(message));

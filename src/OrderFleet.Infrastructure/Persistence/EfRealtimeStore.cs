@@ -22,8 +22,16 @@ public sealed class EfRealtimeStore(OrderFleetDbContext context) : IRealtimeStor
     public async Task<RealtimeOrderSnapshot?> ReadAsync(Guid orderId, CancellationToken ct)
     {
         var order = await context.Orders.AsNoTracking().Where(x => x.Id == orderId)
-            .Select(x => new { x.Id, x.CustomerId, x.RestaurantId, x.Status, x.CourierId, x.AssignmentId,
-                Sequence = EF.Property<long>(x, "LastEventSequence") }).SingleOrDefaultAsync(ct);
+            .Select(x => new
+            {
+                x.Id,
+                x.CustomerId,
+                x.RestaurantId,
+                x.Status,
+                x.CourierId,
+                x.AssignmentId,
+                Sequence = EF.Property<long>(x, "LastEventSequence")
+            }).SingleOrDefaultAsync(ct);
         if (order is null) return null;
         CourierLocationUpdate? location = null;
         if (order.CourierId.HasValue && order.AssignmentId.HasValue && order.Status is OrderStatus.Assigned or OrderStatus.PickedUp)

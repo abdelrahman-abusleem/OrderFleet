@@ -50,8 +50,14 @@ public sealed class CatalogOrderingApiTests(PostgresFixture fixture) : IClassFix
         foreach (var quantity in new[] { 0, -1, 100 })
             Assert.Equal(HttpStatusCode.BadRequest,
                 (await CreateAsync(customer, Request(restaurant, product, quantity), Guid.NewGuid().ToString("N"))).StatusCode);
-        var duplicate = new { restaurantId = restaurant, items = new[]
-            { new { productId = product, quantity = 1 }, new { productId = product, quantity = 1 } }, latitude = 24.71m, longitude = 46.7m };
+        var duplicate = new
+        {
+            restaurantId = restaurant,
+            items = new[]
+            { new { productId = product, quantity = 1 }, new { productId = product, quantity = 1 } },
+            latitude = 24.71m,
+            longitude = 46.7m
+        };
         Assert.Equal(HttpStatusCode.BadRequest,
             (await CreateAsync(customer, duplicate, Guid.NewGuid().ToString("N"))).StatusCode);
         var nullItem = new { restaurantId = restaurant, items = new object?[] { null }, latitude = 24.71m, longitude = 46.7m };
@@ -320,8 +326,10 @@ public sealed class CatalogOrderingApiTests(PostgresFixture fixture) : IClassFix
 
     internal static object Request(Guid restaurant, Guid product, int quantity = 2) => new
     {
-        restaurantId = restaurant, items = new[] { new { productId = product, quantity } },
-        latitude = 24.71m, longitude = 46.70m
+        restaurantId = restaurant,
+        items = new[] { new { productId = product, quantity } },
+        latitude = 24.71m,
+        longitude = 46.70m
     };
 
     internal static async Task<HttpResponseMessage> CreateAsync(HttpClient client, object request, string key)

@@ -17,10 +17,14 @@ public static class IntegrationEvents
     {
         var type = fact switch
         {
-            OrderCreated => "order.created.v1", OrderAccepted => "order.accepted.v1",
-            CourierAssigned => "order.courier-assigned.v1", AssignmentReleased => "order.assignment-released.v1",
-            OrderPickedUp => "order.picked-up.v1", OrderDelivered => "order.delivered.v1",
-            OrderCancelled => "order.cancelled.v1", _ => throw new ArgumentOutOfRangeException(nameof(fact))
+            OrderCreated => "order.created.v1",
+            OrderAccepted => "order.accepted.v1",
+            CourierAssigned => "order.courier-assigned.v1",
+            AssignmentReleased => "order.assignment-released.v1",
+            OrderPickedUp => "order.picked-up.v1",
+            OrderDelivered => "order.delivered.v1",
+            OrderCancelled => "order.cancelled.v1",
+            _ => throw new ArgumentOutOfRangeException(nameof(fact))
         };
         Guid? courier = fact switch { CourierAssigned x => x.CourierId, OrderPickedUp x => x.CourierId, OrderDelivered x => x.CourierId, _ => null };
         Guid? assignment = fact switch { CourierAssigned x => x.AssignmentId, OrderPickedUp x => x.AssignmentId, OrderDelivered x => x.AssignmentId, _ => null };
@@ -28,9 +32,14 @@ public static class IntegrationEvents
         Guid? previousAssignment = fact switch { AssignmentReleased x => x.PreviousAssignmentId, OrderCancelled x => x.PreviousAssignmentId, _ => null };
         var payload = new
         {
-            orderId = fact.OrderId, status = fact.Status.ToString(), fact.TotalAmount,
-            courierId = courier, assignmentId = assignment, previousCourierId = previousCourier,
-            previousAssignmentId = previousAssignment, reason = (fact as OrderCancelled)?.Reason.ToString()
+            orderId = fact.OrderId,
+            status = fact.Status.ToString(),
+            fact.TotalAmount,
+            courierId = courier,
+            assignmentId = assignment,
+            previousCourierId = previousCourier,
+            previousAssignmentId = previousAssignment,
+            reason = (fact as OrderCancelled)?.Reason.ToString()
         };
         return new(fact.EventId, type, 1, fact.OccurredAt.ToUniversalTime(), fact.OrderId,
             Activity.Current?.TraceId.ToString(), JsonSerializer.Serialize(payload, Json), TraceParent: OrderFleetDiagnostics.CurrentTraceParent);
@@ -40,7 +49,11 @@ public static class IntegrationEvents
         new(Guid.NewGuid(), type, 1, now.ToUniversalTime(), payment.OrderId, Activity.Current?.TraceId.ToString(),
             JsonSerializer.Serialize(new
             {
-                paymentId = payment.Id, payment.OrderId, payment.AuthorizationId, payment.Amount,
-                payment.Currency, state = payment.State.ToString()
+                paymentId = payment.Id,
+                payment.OrderId,
+                payment.AuthorizationId,
+                payment.Amount,
+                payment.Currency,
+                state = payment.State.ToString()
             }, Json), TraceParent: OrderFleetDiagnostics.CurrentTraceParent);
 }

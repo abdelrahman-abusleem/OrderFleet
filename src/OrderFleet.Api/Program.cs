@@ -18,7 +18,9 @@ if (args.Length == 1 && args[0] == "--health-check")
     return;
 }
 var migrateOnly = args.Contains("--migrate", StringComparer.Ordinal);
-var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--migrate").ToArray());
+var seedOnly = args.Contains("--seed-demo", StringComparer.Ordinal);
+if (migrateOnly && seedOnly) throw new InvalidOperationException("Run migration and seed as separate explicit operations.");
+var builder = WebApplication.CreateBuilder(args.Where(arg => arg is not ("--migrate" or "--seed-demo")).ToArray());
 builder.AddOrderTelemetry();
 
 var connectionString = builder.Configuration
@@ -61,6 +63,13 @@ if (migrateOnly)
     Console.WriteLine("Database migrations applied.");
     return;
 }
+if (seedOnly)
+{
+    var manifest = await OrderFleet.Api.Development.DemoBootstrap.ExecuteAsync(app.Services, app.Environment,
+        app.Configuration["Demo:Password"], CancellationToken.None);
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(manifest));
+    return;
+}
 app.UseMiddleware<SafeRequestLogging>();
 app.UseExceptionHandler();
 
@@ -87,37 +96,6 @@ app.MapHub<OrdersHub>("/hubs/orders", options =>
 app.MapGet("/api/v1/orders/{id:guid}/eta", async (Guid id, ClaimsPrincipal principal, GetEta query, CancellationToken ct) =>
     Results.Ok(await query.ExecuteAsync(id, principal.ToActor(), ct))).RequireAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild",
-    "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5)
-        .Select(index => new WeatherForecast(
-            DateOnly.FromDateTime(
-                DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(
-                summaries.Length)]
-        ))
-        .ToArray();
-
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
 app.Run();
-
-record WeatherForecast(
-    DateOnly Date,
-    int TemperatureC,
-    string? Summary)
-{
-    public int TemperatureF =>
-        32 + (int)(TemperatureC / 0.5556);
-}
 
 public partial class Program;

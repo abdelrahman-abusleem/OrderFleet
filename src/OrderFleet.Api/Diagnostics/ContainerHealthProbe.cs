@@ -7,7 +7,7 @@ public static class ContainerHealthProbe
         try
         {
             using var client = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false })
-                { Timeout = TimeSpan.FromSeconds(3) };
+            { Timeout = TimeSpan.FromSeconds(3) };
             using var response = await client.GetAsync("http://127.0.0.1:8080/health/ready");
             return response.StatusCode == System.Net.HttpStatusCode.OK ? 0 : 1;
         }

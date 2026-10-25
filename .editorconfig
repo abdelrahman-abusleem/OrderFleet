@@ -1,9 +1,24 @@
 root = true
 
-# All files
 [*]
 indent_style = space
 
-# Xml files
 [*.xml]
 indent_size = 2
+
+[*.cs]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+charset = utf-8
+
+[*.{csproj,props,yaml,yml,json}]
+indent_style = space
+indent_size = 2
+
+# Preserve the encoding of established Domain files and migration history.
+[src/OrderFleet.Domain/Orders/{CancellationReason,OrderItem,OrderPricingLimits,OrderStatus}.cs]
+charset = utf-8-bom
+
+[src/OrderFleet.Infrastructure/Persistence/Migrations/*.cs]
+charset = utf-8-bom

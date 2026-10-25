@@ -18,8 +18,11 @@ public sealed class Restaurant
             throw new ArgumentException("Restaurant name is required and limited to 200 characters.", nameof(name));
         return new()
         {
-            Id = Guid.NewGuid(), Name = name.Trim(), Latitude = location.Latitude,
-            Longitude = location.Longitude, IsActive = true
+            Id = Guid.NewGuid(),
+            Name = name.Trim(),
+            Latitude = location.Latitude,
+            Longitude = location.Longitude,
+            IsActive = true
         };
     }
 

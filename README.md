@@ -1,39 +1,62 @@
 # OrderFleet
 
-A .NET 10 restaurant ordering and courier dispatch backend, built as a modular monolith with Clean Architecture. This is a production-oriented learning project under active implementation.
+A .NET10 modular monolith for restaurant orders and courier dispatch. Clean Architecture keeps Order/payment/courier invariants independent of EF, HTTP and RabbitMQ. PostgreSQL17/PostGIS handles durable state and geospatial claims; RabbitMQ carries transactional Outbox facts; SignalR provides authorized live snapshots. Payments use a durable deterministic mock, never real money.
 
-## Current status
+## Run the local demo
 
-2026-10-25: Domain, PostgreSQL persistence/concurrency, Identity/JWT, trusted catalog, private delivery information, idempotent ordering, persisted acceptance deadlines and transactional audit are implemented. Release build passes; 257 Domain + 119 Integration tests pass (includes one retained historical placeholder). Thirteen migrations verified against disposable PostgreSQL. Durable mock payments, capture retries/reconciliation and transactional event persistence are implemented; courier availability/location and PostGIS discovery are implemented; confirmed RabbitMQ delivery, fenced Outbox leases and idempotent payment consumption are implemented; atomic dispatch and fenced courier pickup/delivery/release are implemented; persisted timeout/retry/financial recovery is implemented; authorized SignalR updates and approximate ETA are implemented; observability/operational hardening and final delivery verification remain required.
+Prerequisites: Docker Engine/Desktop with Linux containers and Compose v2, PowerShell7+, and internet access to the pinned public images/NuGet packages. Local source build/tests additionally require SDK10.0.403 or a compatible newer feature band, with ASP.NET/Core10.0.14 or later patched runtime. See global.json. No paid service is required.
 
-This folder arrived without Git metadata. The owner authorized local Git initialization after parent-repository and credential checks. No remote is configured and no remote CI run has been verified.
+From the repository root:
 
-## Prerequisites and verification
+```powershell
+./scripts/Bootstrap.ps1
+./scripts/Invoke-Demo.ps1
+```
 
-- .NET SDK10.0.403 or later compatible10.0 feature band, ASP.NET/Core runtime10.0.14 or later patch, and Docker with Linux containers. global.json and Directory.Build.props enforce the patched baseline.
-- Run `dotnet restore OrderFleet.slnx`, `dotnet build OrderFleet.slnx -c Release`, then `dotnet test OrderFleet.slnx -c Release`.
-- Domain tests need no infrastructure: `dotnet test tests/OrderFleet.Domain.Tests -c Release`.
-- Real integration tests provision disposable PostgreSQL 17 + PostGIS 3.5 through Testcontainers; never point tests at the developer database.
-- After a Release build, `pwsh ./scripts/Verify-Migrations.ps1` checks the EF migration CLI using a new disposable PostGIS container; requires dotnet-ef. It never targets the developer database. CreatedAt cannot be inferred for populated legacy databases; those require a reviewed backfill before upgrading.
+Bootstrap builds the API image, generates missing random secrets in ignored `.env`, starts the **orderfleet-demo** app stack, explicitly migrates, explicitly seeds, and waits for readiness. It preserves existing nonempty secrets and data. It does not push images or contact a remote Git repository. API defaults to http://127.0.0.1:8080, PostGIS5434, RabbitMQ5672 and management15672, all loopback only. Change ports in `.env` before first startup if occupied. The script prints the actual API address; pass it as `-BaseUrl` to the demo if changed.
 
-## Running locally
+The seed runs only with `--seed-demo` in Development and a private configured `Demo__Password` (20..128 characters). Seed accounts: `customer`, `owner`, `staff`, `courier`, `admin`, `stranger` at `@demo.orderfleet.test`; their password is `DEMO_PASSWORD` in your ignored `.env`. Seed creates one kitchen/meal, owner/staff memberships and an offline courier. It never resets an existing password or promotes an unrelated account with a colliding email. There are no default usable credentials and no public role-grant endpoint. Keep this stack local: Development credentials, HTTP and a shared demo password are not production security settings.
 
-Configure `ConnectionStrings:OrderFleet`, `Jwt:Issuer`, `Jwt:Audience` and `Jwt:SigningKey` through User Secrets or environment variables (double underscores replace colons). The signing key must contain at least 32 random bytes; no usable default is supplied. Tokens default to 15 minutes with 30 seconds of clock skew; no refresh tokens. Public registration grants Customer only. Privileged demo provisioning comes later; never expose a client-selected role.
+The HTTP demo signs in, publishes fresh courier position, creates a SAR51 order from trusted catalog prices, verifies duplicate replay and authorization denial, captures/accepts, waits for assignment, picks up and delivers. Tokens/password/private coordinates are not printed. OpenAPI JSON is at `/openapi/v1.json` in Development. Follow [the walkthrough and runbook](docs/13_DELIVERY_GUIDE.md) for manual calls, diagrams, failure recovery and maintenance.
 
-Current endpoints include register/login/me, public restaurant/product browse, authorized catalog writes, idempotent order create/get/list, restaurant accept/reject, actor-derived cancel and private delivery reads. See [implemented request contracts](docs/11_API_DATA_CONTRACTS.md). OpenAPI is available at `/openapi/v1.json` in Development. Order reads require actor ownership/membership/current courier assignment; unauthorized resources use privacy-aware 404. Credentials are rate-limited; five failed logins lock the account for 15 minutes. Role revocation takes effect at token expiry; restaurant membership is checked live. Email verification, refresh tokens and production identity governance are not claimed.
+## Build and verify
 
-Order create requires a valid destination and `Idempotency-Key`. Names/prices come only from the restaurant catalog. `Ordering:AcceptanceTimeoutMinutes` defaults to 5 and is frozen per order; expired accept returns 409 even before the future worker processes cancellation. Create authorizes and acceptance captures against a durable mock ledger. Permanent capture declines return 409; transient and uncertain results return 503 with safe same-operation retry. Cancellation settlement consumer voids/refunds idempotently; broker transport is implemented; persisted timeout and compensation recovery workers are implemented. MockPayments:AuthorizeOutcome supports Success/Declined/Transient; CaptureOutcome adds Unknown to simulate a committed charge with a lost response. This mock never charges real money.
+```powershell
+dotnet restore OrderFleet.slnx
+dotnet format whitespace OrderFleet.slnx --verify-no-changes --no-restore
+dotnet build OrderFleet.slnx -c Release --no-restore
+dotnet test OrderFleet.slnx -c Release --no-build --no-restore
+dotnet list OrderFleet.slnx package --vulnerable --include-transitive
+```
 
-The original weather template remains but is protected by deny-by-default authentication. The complete ordering workflow is under implementation. Never commit database credentials. Existing Compose PostgreSQL data is preserved; do not run destructive volume cleanup. All tested migrations have been applied only to disposable databases, not the developer database.
+SDK analyzers run with warnings treated as errors. Integration tests need a reachable Docker daemon and create/dispose their own PostGIS/RabbitMQ containers with random ports/credentials. They do not use your Compose database. `scripts/Verify-Migrations.ps1` additionally applies the full migration chain to a new disposable PostGIS instance; it requires dotnet-ef10 and never targets the developer database. In this workspace a hash-verified patched SDK is available under ignored `.tools/dotnet`; set DOTNET_ROOT/PATH to it if the system SDK is older.
 
-See [the engineering contract](docs/00_START_HERE.md), [roadmap](docs/04_EXECUTION_ROADMAP.md), and [verified progress](docs/07_PROGRESS_AND_HANDOFF.md).
+[CI](.github/workflows/ci.yml) restores/builds/checks whitespace and runs Domain tests; a Docker job runs integration tests and clean Compose bootstrap/demo. Local execution evidence is in [progress](docs/07_PROGRESS_AND_HANDOFF.md). Remote CI has not been run or claimed: no remote push is authorized.
 
-Courier/spatial setup uses a PostGIS-capable database: `docker compose --profile spatial up -d postgis` provisions a separate database/volume on loopback5434. Configure the API connection to this new database before applying migrations. The legacy postgres:17 service on5433 remains preserved; it cannot apply the spatial migration without PostGIS installed. Never attach the new image to the legacy volume or run destructive volume cleanup. Courier endpoints use authenticated own identity; nearby discovery requires restaurant authority. See ADR-018 for radius, timestamp freshness and privacy policy.
+## What is implemented
 
-Messaging defaults enabled. Configure Messaging__Uri through User Secrets/environment, e.g. an amqp URI containing your local credentials, never in tracked settings. `docker compose --profile messaging up -d rabbitmq` uses the ignored .env RABBITMQ_PASSWORD and loopback ports5672/15672. Messaging:Enabled=false explicitly pauses transport for isolated component tests/maintenance; it does not make the workflow operationally complete. Retry/DLQ, lease settings and event routes are documented in ADR-019. Real RabbitMQ integration tests need Docker and start their own broker; no local service credentials are reused.
+- JWT/Identity roles and ownership, live restaurant membership, controlled registration, lockout/rate limits and private delivery information.
+- Catalog snapshots, decimal SAR pricing, complete established Order state/cancellation matrix and assignment fences.
+- Idempotent create/payment effects, capture-before-acceptance, permanent/transient/unknown outcome handling and refund/void compensation.
+- Real PostGIS radius/freshness queries and atomic courier capacity claims, xmin concurrency and unique active-assignment constraints.
+- Transactional Outbox, leased publication, publisher confirms, manual ACK, Inbox dedupe, bounded retry/dead letters and persisted timeout/recovery processing.
+- Private SignalR subscriptions, live authority checks, reconnect snapshots, GPS freshness/throttling and explicitly approximate ETA.
+- Safe Serilog, W3C/OpenTelemetry HTTP/DB/message/dispatch traces and metrics, bounded readiness probes and audited administrator replay.
 
-Local verification in this workspace uses the ignored .tools/dotnet SDK10.0.403/runtime10.0.14 (official archive SHA512 verified); the system SDK was preserved. If your PATH still selects older .NET, use `./.tools/dotnet/dotnet.exe` or install the patched SDK. Migration audit detects this local Windows SDK automatically and restores its process environment afterward. CI installs the SDK from global.json. See ADR-023 for the SignalR security patch evidence.
+## Operational boundaries
 
-SignalR /hubs/orders supports private owned subscriptions with live role/membership checks, expiry closure and reconnect snapshot refresh. GET /api/v1/orders/{id}/eta labels its approximation and stale-location fallback. This demo supports one API instance for realtime; multi-worker DB concurrency is separately verified. See ADR-022 for privacy and scale boundaries.
+One API instance supports realtime; DB claims/leases are separately tested across concurrent contexts/workers. A tested SignalR backplane/fanout design is needed before multiple API replicas. Delivery is at least once, with idempotent business effects; client notifications are best effort with snapshot refresh. ETA uses geography distance and configured speed/buffers, not roads or traffic. Mock payments require a real provider adapter/reconciliation contract before real-money use.
 
-Phase11 local gate passed:257 Domain +138 Integration,0 failed/skipped,16 migrations verified. Operations/health/telemetry/container policies are in ADR-024 and API contracts. Delivery/bootstrap/E2E documentation is the next required phase.
+The existing `orderfleet-postgres` service/database on5433 is preserved behind the `legacy` profile. New PostGIS uses a separate volume; do not attach the new image to the old volume. All migration/demo verification targeted disposable databases. Existing populated legacy assignments would require owner-reviewed history/deadline reconciliation before upgrading. No automated production migration, destructive reset, remote push, deployment, HA/SLA certification or completed human review is claimed.
+
+Stop the demo without deleting data:
+
+```powershell
+docker compose --project-name orderfleet-demo --profile app stop
+```
+
+For a fresh demo, use a new `-ProjectName orderfleet-yourname` and free ports; retain the old volume for review. Do not run unqualified volume deletion. Backup/retention/security-patching guidance and remaining operational decisions are in [the delivery guide](docs/13_DELIVERY_GUIDE.md).
+
+Repository agreement: [AGENTS.md](AGENTS.md), [navigation](docs/00_START_HERE.md), [architecture](docs/02_ARCHITECTURE.md), [ADRs](docs/08_DECISION_LOG.md), [quality gates](docs/05_QUALITY_GATES.md).
+
+Latest final local result (2026-10-26): **402 passed,0 failed,0 skipped** —257 Domain and145 Integration. Strict Release build and whitespace check pass;16 migrations and clean-source Docker bootstrap/demo verified. Human review and remote CI remain external/unverified.

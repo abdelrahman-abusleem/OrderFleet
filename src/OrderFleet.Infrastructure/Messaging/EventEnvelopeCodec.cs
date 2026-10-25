@@ -8,7 +8,7 @@ namespace OrderFleet.Infrastructure.Messaging;
 public static class EventEnvelopeCodec
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-        { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16 };
+    { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16 };
     private static readonly HashSet<string> Types =
     [
         "order.created.v1", "order.accepted.v1", "order.courier-assigned.v1", "order.assignment-released.v1",

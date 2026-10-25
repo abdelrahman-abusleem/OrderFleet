@@ -2,6 +2,10 @@
 
 > IMPORTANT: Values marked **historical handoff** are statements from earlier work, **not proof** that current local repo still has the same build/test state. Implementation agent must verify and replace them with dated observations.
 
+## Final local delivery status — 2026-10-26
+
+Implementation through Phase12 is locally verified. Final Release build:0 warnings/errors with SDK analyzers and warnings-as-errors. Full solution:402 passed(257 Domain+145 Integration),0 failed,0 skipped. Sixteen migrations, clean-source bootstrap, real HTTP demo, actual PostGIS/RabbitMQ/SignalR and restart/failure tests verified. Remote CI, human owner review/merge and deployment are external and not claimed. See the current tracker, dated logs and docs/13_DELIVERY_GUIDE.md.
+
 ## Baseline (historical handoff; VERIFY FIRST)
 
 | Area | Handoff statement | Actual verification status |
@@ -27,14 +31,14 @@
 | 2B Concurrency | VERIFIED_COMPLETE locally | 11 DB conflicts + 4 HTTP error boundary cases | remote CI unverified | proceed to Identity |
 | 3 Identity | VERIFIED_COMPLETE locally | 17 real HTTP/JWT/DB security cases | remote CI unverified | proceed to catalog/order commands |
 | 4 Catalog + Orders API | VERIFIED_COMPLETE locally | 11 new Domain + 19 HTTP/DB catalog/order cases; 7 migrations | remote CI unverified | integrate approved payment workflow |
-| 5 Payments | IN_PROGRESS | ADR-008 binding; trusted order pipeline ready | none | durable mock authorize/capture and compensation |
-| 6 Couriers + Geo | NOT_VERIFIED | — | — | after core order flow |
-| 7 Outbox + RabbitMQ | NOT_VERIFIED | — | — | after events defined |
-| 8 Dispatch | NOT_VERIFIED | — | — | after courier + outbox |
-| 9 Recovery | NOT_VERIFIED | — | — | after dispatch |
-| 10 Realtime + ETA | NOT_VERIFIED | — | — | after reliable events |
-| 11 Observability | NOT_VERIFIED | — | — | hardening |
-| 12 Delivery | NOT_VERIFIED | — | — | final E2E |
+| 5 Payments | VERIFIED_COMPLETE locally | 253 Domain +81 Integration phase gate; retry/reconciliation and compensation tests | remote CI unverified | complete |
+| 6 Couriers + Geo | VERIFIED_COMPLETE locally | 256 Domain +84 Integration; real PostGIS freshness/radius/index proof | none | complete |
+| 7 Outbox + RabbitMQ | VERIFIED_COMPLETE locally | 256 Domain +92 Integration; real confirms/redelivery/retry/DLQ/leases | none | complete |
+| 8 Dispatch | VERIFIED_COMPLETE locally | 256 Domain +100 Integration; concurrent claims/capacity/fences | none | complete |
+| 9 Recovery | VERIFIED_COMPLETE locally | 257 Domain +108 Integration; persisted deadlines/reconciliation/bounds | none | complete |
+| 10 Realtime + ETA | VERIFIED_COMPLETE locally | 257 Domain +119 Integration; real SignalR/broker/privacy/ETA | single API realtime documented | complete |
+| 11 Observability | VERIFIED_COMPLETE locally | 257 Domain +138 Integration; actual exporters/outages/ops/poison isolation;16 migrations | none | complete |
+| 12 Delivery | VERIFIED_COMPLETE locally; external review pending | final402 tests(257 Domain+145 Integration),0 failed/skipped; clean-source bootstrap/demo; strict build/format | remote CI and human owner review external | owner reviews local phase branches; no push authorized |
 
 ## Session log template (copy and populate per milestone)
 
@@ -206,3 +210,30 @@ If current repo state conflicts with this document, **the inspected repository w
 - OperationsApiTests first failed expected missing endpoints. Six cases now pass: anonymous redacted liveness/readiness; real DB outage bounded probe; live administrator revocation; redacted admin diagnostics; concurrent actor/operation/key replay with audit; active Outbox lease protection and resumption of exhausted paid dispatch. Mutating support operations never bypass Domain state/fencing and keep immutable attempt history.
 - Added W3C TraceParent persisted with Outbox and propagated in AMQP headers; real broker lineage/outage probe test is running. New additive AddOperationalAuditAndTraceContext migration introduces nullable trace context and operator audit/idempotency tables; developer database untouched. Default telemetry console exporter, opt-in OTLP, no paid service. Full Phase11 gate not yet complete: Compose/container hardening, broader failure/config tests, regression and final review remain.
 - Phase11 final regression after sampling fix:257 Domain +138 Integration passed,0 failed/skipped; build0 warnings/errors. All16 migrations apply from empty disposable PostGIS; dependency audit no known vulnerable packages. Docker build succeeds with patched pinned runtime, Compose readiness passes after explicit16-migration upgrade. No GSS warning after explicit password-auth configuration. Recovery poison isolation, immutable replay audit and legacy trace-ID boundary included. Reviewed changed lines for privacy, leases, mutation authority and no Domain bypass. Local Phase11 gate passed; human review/remote CI remain delivery limitations. Next: Phase12 bootstrap/seed, full demo, architecture checks, CI and final documentation.
+
+
+### 2026-10-26 — Phase12 delivery implementation and review
+
+- Added explicit Development-only repeat-safe seed (six actors, one kitchen/meal, memberships/offline profile), cryptographic missing-secret generation and explicit build/migrate/seed/start bootstrap. No normal-start schema changes or public role grants. Collision test proves unrelated preexisting demo email cannot gain Admin and the transaction rolls back. Repeat test preserves password hash and courier availability.
+- HTTP Invoke-Demo passes against initial audit stack, newly created empty delivery stack and clean source-only export with newly generated .env/empty volumes. Each validates SAR51/capture-before-acceptance/dispatch/pickup/deliver, same-key201 replay, foreign404 and wrong-role403, terminal409 and approximate ETA. Clean export copied tracked/current source only (no .env/.tools/bin/obj/Git data); Docker builds from it. SQL verifies16 applied migrations and1 Delivered order. UID1654/read-only/healthy verified. Initial ad-hoc SQL inspection assumed numeric status and failed; corrected to actual string mapping. A post-demo shell check read stale LASTEXITCODE and falsely failed after successful output; PowerShell demo itself completed all assertions. No product workaround.
+- EndToEndJourneyTests passes using actual Identity logins, real PostGIS/Rabbit, full hosted-process services stop/restart, stable JWT/fence, concurrent dispatch replay and broker-to-SignalR Delivered snapshot. DB asserts exactly one capture effect/assignment and released courier capacity. Await eventual publisher mark because consumer notification can precede post-confirm marking; no exactly-once transport claim.
+- Historical empty Integration Test1 replaced by meaningful ArchitectureTests; no empty test assertion remains. Domain assertions preserved. CI adds whitespace validation, SDK analyzers/warnings-as-errors and real Docker Compose demo; remote execution remains UNVERIFIED (no push authorized).
+- dotnet format whitespace initially found whitespace issues. Applied formatter only; preserved original Order Domain and migration encoding via explicit .editorconfig rules, original InitialCreate hashes unchanged. Built-in analyzers/warnings-as-errors build0 warnings/errors. Full regression initially257 Domain +144/145 Integration: frozen-clock host versus wall-clock courier test helper failed future-skew guard under slow resource contention. Corrected helper to use actual injected IClock without relaxing guard/assertion. Next full regression257+145 passed,0 failed/skipped. Final8 seed/collision/restart/architecture cases pass after review assertions; final whole-solution run follows.
+- Self-review: source dependency boundaries, trusted fields, live roles/memberships, private coords/token/query/exception export, provider key/reconciliation/deadline semantics, DB lock order/xmin/capacity/fences, technical retry audit/backoff, cancellation propagation, clean bootstrap repeat safety and credential preservation, migration target safety and no unbounded network success claims checked. Corrected missing seed availability assertion and eventual publication observation race. No unresolved known P0/P1 finding; human review remains pending.
+- README replaced accumulated stale progress prose with current setup/limits; delivery guide includes actual calls, architecture/sequence/data diagrams, failure-to-test matrix, operations/retention/patching and explicit production/realtime limitations. ADR-025 records seed/bootstrap tradeoffs.
+- Removed only the three owned audit/delivery/clean Compose projects after validating exact project labels/container names/two expected volume names. Original orderfleet-postgres remains healthy; developer data/secrets preserved. Temporary clean export is ignored, never committed. No push/merge/deploy or developer schema migration performed.
+
+
+- Phase12 FINAL commands: `dotnet format whitespace OrderFleet.slnx --verify-no-changes --no-restore --verbosity quiet` passed; `dotnet build OrderFleet.slnx -c Release --no-restore`0 warnings/errors; `dotnet test OrderFleet.slnx -c Release --no-build --no-restore`257 Domain +145 Integration passed,0 failed/skipped. Targeted final seed/collision/restart/architecture8/8 passed before full regression. Package audit last run reports no known vulnerable packages. InitialCreate main/designer hashes remain original. No secrets/generated artifacts tracked; private-key-material check and git diff --check pass. Local Phase12 gate passed. Human owner review/merge and remote CI remain pending external steps; no production-readiness claim.
+
+### Final test file inventory
+
+Order Domain coverage: OrderCreationTests.cs, OrderItemTests.cs, OrderPricingLimitsTests.cs, OrderStateMachineTests.cs, OrderAssignmentTests.cs, OrderCancellationTests.cs, OrderDomainAdditionsTests.cs and OrderTestSupport.cs in tests/OrderFleet.Domain.Tests. Later approved modules add CatalogDomainTests.cs, CourierTests.cs and PaymentTests.cs. All established state/cancellation/fence assertions remain; Phase12 changes in OrderAssignmentTests/OrderCancellationTests are formatter whitespace only.
+
+Phase12 new test files in tests/OrderFleet.IntegrationTests: ArchitectureTests.cs (replaces/renames empty UnitTest1), DemoBootstrapTests.cs, DemoSeedCollisionTests.cs, EndToEndJourneyTests.cs. DispatchConcurrencyTests helper now uses injected IClock; no production guard weakened. Other Phase12 test modifications are whitespace-only in CatalogOrderingApiTests, IdentityApiTests, RabbitDeliveryTests, RabbitFixture and TelemetryTests. Phase11 new files: OperationsApiTests, RecoveryFailureIsolationTests, StartupOptionsTests, TelemetryTests; RabbitDeliveryTests additionally verifies actual trace lineage/outage readiness. Earlier real persistence, concurrency, identity, payment, spatial, dispatch, lease, recovery, realtime and ETA test files remain in the project.
+
+### Findings and owner review
+
+No open known Order Domain bug or new business decision remains. Existing state machine, cancellation reasons and assignment semantics were preserved. Implemented approved ADR013 additions only; infra fixes addressed decimal.MaxValue persistence/rounding, UTC materialization and optimistic concurrency. Later review fixed unbounded reassignment/recovery poison risk, unknown-payment reconciliation/late capture compensation, unsafe immutable exception telemetry, premature sampler configuration, frozen-clock helper mismatch and observation races. These are documented with actual failed/pass evidence above.
+
+Owner review is still required before merging local phase branches or any deployment. Remote CI has not been executed, image OS CVE scanning/production backup and retention policy are not certified, real-money gateway is outside mock scope, multi-API realtime needs a tested backplane, and any populated legacy assignment upgrade needs explicit history/deadline reconciliation. These are recorded operational boundaries, not silently skipped mandatory demo modules. No new unresolved major business decision was encountered after the recorded owner approvals.

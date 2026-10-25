@@ -41,11 +41,15 @@ public sealed class RabbitDeliveryProcessor
             else OrderFleetDiagnostics.ConsumerRetries.Add(1);
             var retry = new BasicProperties
             {
-                Persistent = true, ContentType = properties.ContentType, MessageId = properties.MessageId,
-                Type = properties.Type, CorrelationId = properties.CorrelationId,
+                Persistent = true,
+                ContentType = properties.ContentType,
+                MessageId = properties.MessageId,
+                Type = properties.Type,
+                CorrelationId = properties.CorrelationId,
                 Headers = new Dictionary<string, object?>
                 {
-                    ["x-retry-attempt"] = attempt + 1, ["x-failure-code"] = failure,
+                    ["x-retry-attempt"] = attempt + 1,
+                    ["x-failure-code"] = failure,
                     ["traceparent"] = Encoding.ASCII.GetBytes(activity?.Id ?? traceParent ?? "")
                 }
             };

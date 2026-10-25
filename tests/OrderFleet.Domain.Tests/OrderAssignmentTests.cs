@@ -88,12 +88,12 @@ public class OrderAssignmentTests
     public static IEnumerable<object[]> InvalidAssignmentIdentifiers()
     {
         foreach (var operation in new[] { "PickUp", "Deliver" })
-        foreach (var courierKind in new[] { "Current", "Empty", "Other" })
-        foreach (var assignmentKind in new[] { "Current", "Empty", "Other" })
-        {
-            if (courierKind != "Current" || assignmentKind != "Current")
-                yield return [operation, courierKind, assignmentKind];
-        }
+            foreach (var courierKind in new[] { "Current", "Empty", "Other" })
+                foreach (var assignmentKind in new[] { "Current", "Empty", "Other" })
+                {
+                    if (courierKind != "Current" || assignmentKind != "Current")
+                        yield return [operation, courierKind, assignmentKind];
+                }
     }
 
     [Theory]

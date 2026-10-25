@@ -27,7 +27,7 @@ public sealed class EfPaymentStore(OrderFleetDbContext context) : IPaymentStore
     {
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_InboxMessages" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_InboxMessages" })
         {
             // A concurrent consumer already committed the same message and effects.
             context.ChangeTracker.Clear();

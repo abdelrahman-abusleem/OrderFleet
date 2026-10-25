@@ -27,8 +27,13 @@ public sealed class Payment
         if (currency != "SAR") throw new ArgumentException("Only SAR is supported.", nameof(currency));
         return new()
         {
-            Id = Guid.NewGuid(), OrderId = orderId, AuthorizationId = authorizationId,
-            Amount = amount, Currency = currency, State = PaymentState.Authorized, AuthorizedAt = now
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AuthorizationId = authorizationId,
+            Amount = amount,
+            Currency = currency,
+            State = PaymentState.Authorized,
+            AuthorizedAt = now
         };
     }
 

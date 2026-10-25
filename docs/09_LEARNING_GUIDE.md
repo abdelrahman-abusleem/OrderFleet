@@ -187,3 +187,7 @@ Courier GPS facts contain no coordinates. The authorized notifier reads current 
 Follow an incoming W3C trace through order.create, PostgreSQL, persisted Outbox, confirmed Rabbit publication and consumer handling. SafeActivityProcessor and SafeExceptionListener protect different boundaries: mutable span tags can be filtered after completion, immutable exception event data must be redacted before capture. TelemetryTests checks actual exporters rather than logger mocks. Default root sampling10% is an operational cost choice; tests explicitly use100%.
 
 Liveness proves process response; readiness additionally checks dependency/schema availability with time limits. Operations endpoints require live administrator authority and persist idempotency plus audit. Retrying a technical dead letter does not force an Order transition. RecoveryFailureIsolationTests demonstrates why a bounded per-item failure ledger matters: one bad item must not prevent another timeout or compensation from progressing.
+
+## Executable local walkthrough
+
+Read [13_DELIVERY_GUIDE.md](13_DELIVERY_GUIDE.md) after the contracts. It includes actual seed/login/create/assignment calls, architecture/sequence/data diagrams, failure mapping to named tests, operator replay, private telemetry, retention and patching boundaries. Bootstrap and Invoke-Demo are executable counterparts. ArchitectureTests replaces the historical empty integration placeholder. EndToEndJourneyTests follows capture/dispatch through a full host restart and broker-to-SignalR delivery with durable DB assertions.

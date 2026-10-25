@@ -1,5 +1,8 @@
 <Project>
   <PropertyGroup>
     <RuntimeFrameworkVersion>10.0.14</RuntimeFrameworkVersion>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>

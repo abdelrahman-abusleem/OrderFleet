@@ -103,3 +103,7 @@ Application command -> Domain transition + Outbox event (same PostgreSQL transac
 - Docker Compose locally: database **with PostGIS extension installed and enabled**, RabbitMQ, API, worker (if separate), optional tracing collector. Existing `postgres:17` image does NOT automatically imply PostGIS exists: intentionally migrate to a compatible tested PostGIS-capable image or add extension through a justified build; do not wipe the existing data volume.
 - Use development User Secrets/env configuration; strongly validated options, safe defaults, no credentials in tracked files. Migrations run deliberately, not destructive auto-migrate on every production startup.
 - Readiness checks verify meaningful dependencies with suitable timeouts; liveness avoids cascading restarts when an external service is briefly unhealthy.
+
+## Implemented runtime navigation (2026-10-26)
+
+The concrete boundaries, complete order sequence, logical data model and failure-mode matrix are in [13_DELIVERY_GUIDE.md](13_DELIVERY_GUIDE.md). Actual source retains the four existing projects; no extra service/project layer was introduced. ArchitectureTests verifies Domain/Application assembly references exclude infrastructure/transport. API composition and Development bootstrap may reference infrastructure; HTTP business handlers delegate to Application. DB technical claims/leases and projections live in Infrastructure; Domain transition methods remain the authority.

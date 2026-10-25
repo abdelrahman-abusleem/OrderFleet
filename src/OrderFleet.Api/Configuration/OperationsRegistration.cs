@@ -28,7 +28,7 @@ public static class OperationsRegistration
             {
                 Predicate = check => check.Tags.Contains(mode),
                 ResponseWriter = (context, report) => context.Response.WriteAsJsonAsync(new
-                    { status = report.Status == HealthStatus.Healthy ? "Healthy" : "Unavailable" })
+                { status = report.Status == HealthStatus.Healthy ? "Healthy" : "Unavailable" })
             }).AllowAnonymous().RequireRateLimiting("health");
     }
 }

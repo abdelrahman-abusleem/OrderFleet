@@ -12,9 +12,16 @@ public sealed class EfEtaStore(OrderFleetDbContext context) : IEtaStore
                             join restaurant in context.Restaurants on order.RestaurantId equals restaurant.Id
                             join delivery in context.OrderDeliveryInformation on order.Id equals delivery.OrderId
                             where order.Id == orderId
-                            select new { order.Status, order.CourierId, order.AcceptedAt,
-                                PickupLatitude = restaurant.Latitude, PickupLongitude = restaurant.Longitude,
-                                DestinationLatitude = delivery.Latitude, DestinationLongitude = delivery.Longitude }).SingleOrDefaultAsync(ct);
+                            select new
+                            {
+                                order.Status,
+                                order.CourierId,
+                                order.AcceptedAt,
+                                PickupLatitude = restaurant.Latitude,
+                                PickupLongitude = restaurant.Longitude,
+                                DestinationLatitude = delivery.Latitude,
+                                DestinationLongitude = delivery.Longitude
+                            }).SingleOrDefaultAsync(ct);
         if (source is null) return null;
         var pickup = new Point((double)source.PickupLongitude, (double)source.PickupLatitude) { SRID = 4326 };
         var destination = new Point((double)source.DestinationLongitude, (double)source.DestinationLatitude) { SRID = 4326 };
@@ -25,8 +32,12 @@ public sealed class EfEtaStore(OrderFleetDbContext context) : IEtaStore
             """).SingleAsync(ct);
         var courier = source.CourierId.HasValue ? await context.CourierPositions.AsNoTracking()
             .Where(x => x.CourierId == source.CourierId)
-            .Select(x => new { ToPickup = EF.Functions.Distance(x.Location, pickup, true),
-                ToDestination = EF.Functions.Distance(x.Location, destination, true), x.ObservedAt }).SingleOrDefaultAsync(ct) : null;
+            .Select(x => new
+            {
+                ToPickup = EF.Functions.Distance(x.Location, pickup, true),
+                ToDestination = EF.Functions.Distance(x.Location, destination, true),
+                x.ObservedAt
+            }).SingleOrDefaultAsync(ct) : null;
         return new(source.Status.ToString(), route, courier?.ToPickup, courier?.ToDestination, courier?.ObservedAt, source.AcceptedAt);
     }
 }

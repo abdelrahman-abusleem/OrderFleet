@@ -32,8 +32,11 @@ public sealed class RabbitEventPublisher(IOptions<RabbitOptions> options) : IEve
             }
             var properties = new BasicProperties
             {
-                Persistent = true, ContentType = "application/json", MessageId = message.MessageId.ToString("D"),
-                Type = message.Type, CorrelationId = message.CorrelationId,
+                Persistent = true,
+                ContentType = "application/json",
+                MessageId = message.MessageId.ToString("D"),
+                Type = message.Type,
+                CorrelationId = message.CorrelationId,
                 Headers = new Dictionary<string, object?> { ["traceparent"] = Encoding.ASCII.GetBytes(activity?.Id ?? message.TraceParent ?? "") }
             };
             // With confirmation tracking, await fails on broker nack or mandatory

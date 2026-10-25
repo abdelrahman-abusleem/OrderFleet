@@ -210,7 +210,7 @@ public sealed class DispatchConcurrencyTests(PostgresFixture fixture) : IClassFi
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsync("/api/v1/couriers/me", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync("/api/v1/couriers/me/availability", new { isAvailable = true })).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync("/api/v1/couriers/me/location",
-            new { latitude, longitude = 46.7m, observedAt = DateTimeOffset.UtcNow })).StatusCode);
+            new { latitude, longitude = 46.7m, observedAt = factory.Services.GetRequiredService<OrderFleet.Application.Clock.IClock>().UtcNow })).StatusCode);
         return client;
     }
 

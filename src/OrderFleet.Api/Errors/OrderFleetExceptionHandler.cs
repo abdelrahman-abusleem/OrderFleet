@@ -40,7 +40,8 @@ public sealed class OrderFleetExceptionHandler(
             Title = status switch
             {
                 409 => "Request conflicts with the current resource state.",
-                404 => "Resource not found.", 403 => "Access denied.",
+                404 => "Resource not found.",
+                403 => "Access denied.",
                 402 => "Payment authorization declined.",
                 503 when exception is ProviderOutcomeUnknownException => "Payment outcome is being reconciled.",
                 503 => "A required dependency is temporarily unavailable.",
@@ -50,7 +51,7 @@ public sealed class OrderFleetExceptionHandler(
         };
         problem.Extensions["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier;
         if (!await problemDetails.TryWriteAsync(new ProblemDetailsContext
-            { HttpContext = context, ProblemDetails = problem }))
+        { HttpContext = context, ProblemDetails = problem }))
         {
             await context.Response.WriteAsJsonAsync(problem, options: null,
                 contentType: "application/problem+json", cancellationToken: cancellationToken);
