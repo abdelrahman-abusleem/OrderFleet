@@ -33,7 +33,8 @@ internal sealed class ApiFactory(PostgresFixture postgres, TimeProvider? clock =
                 ["Jwt:Issuer"] = Issuer,
                 ["Jwt:Audience"] = Audience,
                 ["Jwt:SigningKey"] = SigningKey,
-                ["Jwt:LifetimeMinutes"] = "15"
-            }.Concat(Overrides)));
+                ["Jwt:LifetimeMinutes"] = "15",
+                ["Messaging:Enabled"] = "false"
+            }).AddInMemoryCollection(Overrides));
     }
 }

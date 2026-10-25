@@ -23,6 +23,7 @@ builder.Services.AddExceptionHandler<OrderFleetExceptionHandler>();
 builder.Services.AddOrderFleetIdentity(builder.Configuration);
 builder.Services.AddOrdering(builder.Configuration);
 builder.Services.AddCouriers(builder.Configuration);
+builder.Services.AddMessaging(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
 

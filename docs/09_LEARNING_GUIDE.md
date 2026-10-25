@@ -157,3 +157,9 @@ PaymentWorkflowTests uses real PostgreSQL and a new host with the same signing k
 ### Phase 6 — time and distance have storage semantics
 
 Courier owns state and ordered coordinates without knowing NTS or EF. ManageCourier checks the observation window and normalizes microsecond precision; EfCourierStore commits Domain state with a PostGIS projection in one transaction. A stale context cannot update either one after the root xmin changes. NTS Point X means longitude. Geography and server-side distance supply meters; a client-side Point.Distance would instead operate on degrees. CourierSpatialTests proves this across longitude ±180 and checks GiST availability using EXPLAIN. Reserved/Busy guard capacity in Domain; concurrent dispatch still needs the Phase 8 transaction and DB constraints.
+
+### Phase 7 — two independent acknowledgements
+
+Trace EfOrderingStore → OutboxMessage → PostgresOutboxStore → OutboxRelay → RabbitEventPublisher. Publisher confirms mean the broker accepted a routed durable message; they do not commit the Outbox marker. Then trace RabbitConsumer → RabbitDeliveryProcessor → CancelledPaymentEventHandler → SettleCancelledPayment: the Inbox marker and local financial state commit before BasicAck. RabbitDeliveryTests deliberately omits each acknowledgement in turn, closes the actual channel, and proves one financial effect despite replay.
+
+A lease token is separate from an assignment token. Lease expiry permits another relay to publish; the old relay cannot mark that claim complete. Duplication is safe only because consumers dedupe. Quorum retry queues preserve failed work while their dead-letter target is unavailable; a bounded dead queue still needs an operator to diagnose and replay safely. Tests demonstrate single-node durability and recovery, not cluster availability or unlimited retention.

@@ -41,6 +41,25 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    profiles: [messaging]
+    image: rabbitmq:4.2-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-orderfleet}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in local .env}
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - orderfleet_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   orderfleet_postgres_data:
   orderfleet_postgis_data:
+  orderfleet_rabbitmq_data:
