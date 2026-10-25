@@ -10,6 +10,8 @@ using OrderFleet.Infrastructure.Orders;
 using OrderFleet.Domain.Payments;
 using OrderFleet.Infrastructure.Payments;
 using OrderFleet.Infrastructure.Messaging;
+using OrderFleet.Domain.Couriers;
+using OrderFleet.Infrastructure.Couriers;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -34,11 +36,14 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<PaymentCaptureAttempt> PaymentCaptureAttempts => Set<PaymentCaptureAttempt>();
+    public DbSet<Courier> Couriers => Set<Courier>();
+    public DbSet<CourierPosition> CourierPositions => Set<CourierPosition>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasPostgresExtension("postgis");
 
         modelBuilder.Entity<IdentityUser<Guid>>().HasIndex(x => x.NormalizedEmail).IsUnique();
         var memberships = modelBuilder.Entity<RestaurantMembership>();

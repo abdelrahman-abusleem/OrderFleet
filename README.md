@@ -4,7 +4,7 @@ A .NET 10 restaurant ordering and courier dispatch backend, built as a modular m
 
 ## Current status
 
-2026-10-25: Domain, PostgreSQL persistence/concurrency, Identity/JWT, trusted catalog, private delivery information, idempotent ordering, persisted acceptance deadlines and transactional audit are implemented. Release build passes; 253 Domain + 81 Integration tests pass (includes one retained historical placeholder). Nine migrations verified against disposable PostgreSQL. Durable mock payments, capture retries/reconciliation and transactional event persistence are implemented; dispatch, messaging, recovery, realtime, ETA and observability remain required and are not implemented yet.
+2026-10-25: Domain, PostgreSQL persistence/concurrency, Identity/JWT, trusted catalog, private delivery information, idempotent ordering, persisted acceptance deadlines and transactional audit are implemented. Release build passes; 256 Domain + 84 Integration tests pass (includes one retained historical placeholder). Ten migrations verified against disposable PostgreSQL. Durable mock payments, capture retries/reconciliation and transactional event persistence are implemented; courier availability/location and PostGIS discovery are implemented; dispatch, messaging, recovery, realtime, ETA and observability remain required and are not implemented yet.
 
 This folder arrived without Git metadata. The owner authorized local Git initialization after parent-repository and credential checks. No remote is configured and no remote CI run has been verified.
 
@@ -13,8 +13,8 @@ This folder arrived without Git metadata. The owner authorized local Git initial
 - .NET 10 SDK and Docker with Linux containers.
 - Run `dotnet restore OrderFleet.slnx`, `dotnet build OrderFleet.slnx -c Release`, then `dotnet test OrderFleet.slnx -c Release`.
 - Domain tests need no infrastructure: `dotnet test tests/OrderFleet.Domain.Tests -c Release`.
-- Real integration tests provision disposable PostgreSQL through Testcontainers; never point tests at the developer database.
-- After a Release build, `pwsh ./scripts/Verify-Migrations.ps1` checks the EF migration CLI using a new disposable PostgreSQL container; requires dotnet-ef. It never targets the developer database. CreatedAt cannot be inferred for populated legacy databases; those require a reviewed backfill before upgrading.
+- Real integration tests provision disposable PostgreSQL 17 + PostGIS 3.5 through Testcontainers; never point tests at the developer database.
+- After a Release build, `pwsh ./scripts/Verify-Migrations.ps1` checks the EF migration CLI using a new disposable PostGIS container; requires dotnet-ef. It never targets the developer database. CreatedAt cannot be inferred for populated legacy databases; those require a reviewed backfill before upgrading.
 
 ## Running locally
 
@@ -27,3 +27,5 @@ Order create requires a valid destination and `Idempotency-Key`. Names/prices co
 The original weather template remains but is protected by deny-by-default authentication. The complete ordering workflow is under implementation. Never commit database credentials. Existing Compose PostgreSQL data is preserved; do not run destructive volume cleanup. All tested migrations have been applied only to disposable databases, not the developer database.
 
 See [the engineering contract](docs/00_START_HERE.md), [roadmap](docs/04_EXECUTION_ROADMAP.md), and [verified progress](docs/07_PROGRESS_AND_HANDOFF.md).
+
+Courier/spatial setup uses a PostGIS-capable database: `docker compose --profile spatial up -d postgis` provisions a separate database/volume on loopback5434. Configure the API connection to this new database before applying migrations. The legacy postgres:17 service on5433 remains preserved; it cannot apply the spatial migration without PostGIS installed. Never attach the new image to the legacy volume or run destructive volume cleanup. Courier endpoints use authenticated own identity; nearby discovery requires restaurant authority. See ADR-018 for radius, timestamp freshness and privacy policy.

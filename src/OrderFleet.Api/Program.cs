@@ -15,13 +15,14 @@ var connectionString = builder.Configuration
         "OrderFleet connection string is missing.");
 
 builder.Services.AddDbContextFactory<OrderFleetDbContext>(
-    options => options.UseNpgsql(connectionString));
+    options => options.UseNpgsql(connectionString, postgres => postgres.UseNetTopologySuite()));
 
 builder.Services.AddOrderFleetOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<OrderFleetExceptionHandler>();
 builder.Services.AddOrderFleetIdentity(builder.Configuration);
 builder.Services.AddOrdering(builder.Configuration);
+builder.Services.AddCouriers(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
 
@@ -41,6 +42,7 @@ app.MapIdentityEndpoints();
 app.MapOrderReadEndpoints();
 app.MapCatalogEndpoints();
 app.MapOrderWriteEndpoints();
+app.MapCourierEndpoints();
 
 var summaries = new[]
 {

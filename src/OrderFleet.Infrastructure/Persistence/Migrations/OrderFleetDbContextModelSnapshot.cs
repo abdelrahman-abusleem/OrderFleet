@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderFleet.Infrastructure.Persistence;
 
@@ -20,6 +21,7 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
@@ -255,6 +257,55 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("OrderFleet.Domain.Couriers.Courier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTimeOffset?>("LocationObservedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId")
+                        .IsUnique()
+                        .HasFilter("\"AssignmentId\" IS NOT NULL");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasFilter("\"OrderId\" IS NOT NULL");
+
+                    b.ToTable("Couriers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Courier_Assignment", "(\"Status\" IN ('Offline','Available') AND \"OrderId\" IS NULL AND \"AssignmentId\" IS NULL) OR (\"Status\" IN ('Reserved','Busy') AND \"OrderId\" IS NOT NULL AND \"AssignmentId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Courier_Location", "(\"Latitude\" IS NULL AND \"Longitude\" IS NULL AND \"LocationObservedAt\" IS NULL) OR (\"Latitude\" IS NOT NULL AND \"Longitude\" IS NOT NULL AND \"LocationObservedAt\" IS NOT NULL AND \"Latitude\" BETWEEN -90 AND 90 AND \"Longitude\" BETWEEN -180 AND 180)");
+                        });
+                });
+
             modelBuilder.Entity("OrderFleet.Domain.Orders.Order", b =>
                 {
                     b.Property<Guid>("Id")
@@ -463,6 +514,29 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_Restaurant_Longitude", "\"Longitude\" BETWEEN -180 AND 180");
                         });
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Couriers.CourierPosition", b =>
+                {
+                    b.Property<Guid>("CourierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geography(Point,4326)");
+
+                    b.Property<DateTimeOffset>("ObservedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CourierId");
+
+                    b.HasIndex("Location");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
+
+                    b.HasIndex("ObservedAt");
+
+                    b.ToTable("CourierPositions", (string)null);
                 });
 
             modelBuilder.Entity("OrderFleet.Infrastructure.Identity.RestaurantMembership", b =>
@@ -821,6 +895,15 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OrderFleet.Domain.Couriers.Courier", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<System.Guid>", null)
+                        .WithOne()
+                        .HasForeignKey("OrderFleet.Domain.Couriers.Courier", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OrderFleet.Domain.Orders.Order", b =>
                 {
                     b.OwnsMany("OrderFleet.Domain.Orders.OrderItem", "Items", b1 =>
@@ -890,6 +973,15 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.HasOne("OrderFleet.Domain.Restaurants.Restaurant", null)
                         .WithMany()
                         .HasForeignKey("RestaurantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderFleet.Infrastructure.Couriers.CourierPosition", b =>
+                {
+                    b.HasOne("OrderFleet.Domain.Couriers.Courier", null)
+                        .WithOne()
+                        .HasForeignKey("OrderFleet.Infrastructure.Couriers.CourierPosition", "CourierId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

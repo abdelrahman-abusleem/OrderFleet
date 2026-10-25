@@ -116,3 +116,6 @@ The ability to compile, a passing mocked unit test, a generated migration, a wor
 
 ### Phase 5 local gate — 2026-10-25
 Release build: 0 warnings/errors. Full suite: 253 Domain + 81 Integration passed, 0 failed/skipped. Nine migrations verified in disposable PostgreSQL 17. Payment retries, ambiguity, concurrency and compensation verified; broker delivery and recovery workers remain later gates. Remote CI unverified. See ADR-017 and progress ledger.
+
+### Phase 6 local gate — 2026-10-25
+Release build: 0 warnings/errors. Full suite: 256 Domain + 84 Integration passed, 0 failed/skipped. Ten migrations applied to disposable PostGIS. Ordered/authorized location updates, geography meters/dateline/radius, freshness, stale rollback and spatial index eligibility verified. Legacy developer database preserved. Remote CI unverified.

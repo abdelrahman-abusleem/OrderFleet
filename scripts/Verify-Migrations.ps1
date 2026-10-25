@@ -5,7 +5,7 @@ $env:POSTGRES_PASSWORD = [Guid]::NewGuid().ToString('N')
 try {
     docker run --detach --rm --name $migrationContainer --env POSTGRES_PASSWORD `
         --env POSTGRES_USER=orderfleet_audit --env POSTGRES_DB=orderfleet_audit `
-        --publish 127.0.0.1::5432 postgres:17 | Out-Null
+        --publish 127.0.0.1::5432 postgis/postgis:17-3.5 | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Disposable database startup failed.' }
     $migrationReady = $false
     for ($attempt = 0; $attempt -lt 30; $attempt++) {

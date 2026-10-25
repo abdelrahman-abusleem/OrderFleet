@@ -22,5 +22,25 @@ services:
       timeout: 5s
       retries: 10
 
+  # Separate opt-in database; never attaches PostGIS to the legacy developer volume.
+  postgis:
+    profiles: [spatial]
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orderfleet
+      POSTGRES_USER: orderfleet
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in local .env}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - orderfleet_postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orderfleet -d orderfleet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   orderfleet_postgres_data:
+  orderfleet_postgis_data:

@@ -99,3 +99,9 @@ PostGIS extension must be available inside the selected container; `postgres:17`
 
 ### Implemented payment behavior (Phase 5)
 Create may return 402 on authorization decline or 503 on provider unavailability, without persisting an Order. Accept returns 409 on permanent capture decline or elapsed persisted deadline; 503 distinguishes retryable failure and uncertain outcome via safe ProblemDetails titles. Capture uses a stable server-derived key; retry the same accept endpoint. A permanent decline remains declined. Unknown outcome reconciles the provider operation before proceeding. See ADR-017. No card data, external payment callback or real gateway exists in this mock.
+
+### Implemented courier API (Phase 6)
+
+Courier role: PUT /api/v1/couriers/me registers own offline profile idempotently; GET reads own status/last observation (no coordinates). PUT /me/availability accepts required isAvailable. PUT /me/location accepts required latitude, longitude and observedAt UTC. Invalid/time-window errors400, duplicate/out-of-order/conflicting writes409. Unknown fields such as courierId reject400; identity always comes from claims.
+
+GET /api/v1/restaurants/{id}/nearby-couriers?radiusMeters=5000&limit=20 requires owner/staff live membership or Admin. Returns courier ID, distanceMeters and observation time, without coordinates. Available/fresh positions only, deterministic distance then ID ranking. Config Couriers:LocationFreshnessSeconds default120, FutureSkewSeconds default15, MaxRadiusMeters default20000. See ADR-018 for bounds and storage semantics.
