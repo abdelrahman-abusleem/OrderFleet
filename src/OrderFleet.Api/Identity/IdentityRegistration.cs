@@ -29,6 +29,15 @@ public static class IdentityRegistration
         services.AddScoped<GetOrder>();
         services.AddScoped<OrderAccessPolicy>();
         services.AddSingleton(TimeProvider.System);
+        AddJwtAuthentication(services, configuration);
+        services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser().Build());
+        AddRequestRateLimiting(services);
+        return services;
+    }
+
+    private static void AddJwtAuthentication(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddScoped<JwtTokenIssuer>();
         services.AddOptions<JwtOptions>().Bind(configuration.GetSection("Jwt"))
             .Validate(x => Uri.TryCreate(x.Issuer, UriKind.Absolute, out _), "Jwt issuer is required.")
@@ -39,8 +48,10 @@ public static class IdentityRegistration
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<JwtOptions>>((options, configured) => ConfigureBearer(options, configured.Value));
-        services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder()
-            .RequireAuthenticatedUser().Build());
+    }
+
+    private static void AddRequestRateLimiting(IServiceCollection services)
+    {
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -65,7 +76,6 @@ public static class IdentityRegistration
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
         });
-        return services;
     }
 
     private static void ConfigureBearer(JwtBearerOptions options, JwtOptions jwt)
