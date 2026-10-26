@@ -36,6 +36,7 @@ internal sealed class ApiFactory(PostgresFixture postgres, TimeProvider? clock =
                 ["Jwt:LifetimeMinutes"] = "15",
                 ["Messaging:Enabled"] = "false",
                 ["Recovery:Enabled"] = "false",
+                ["Cleanup:Enabled"] = "false",
                 ["Telemetry:Exporter"] = "None",
                 ["Telemetry:TraceSamplingRatio"] = "1"
             }).AddInMemoryCollection(Overrides));

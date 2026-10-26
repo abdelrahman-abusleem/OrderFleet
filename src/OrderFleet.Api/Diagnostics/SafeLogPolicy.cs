@@ -8,7 +8,7 @@ public sealed class SafeLogPolicy : ILogEventEnricher
 {
     private static readonly HashSet<string> Templates =
     [
-        "Recovery sweep failed {FailureType}", "Admin {ActorId} cancelled order {OrderId}",
+        "Recovery sweep failed {FailureType}", "Cleanup sweep failed {FailureType}", "Admin {ActorId} cancelled order {OrderId}",
         "Admin {ActorId} read delivery for order {OrderId}", "Admin {ActorId} read order {OrderId}",
         "HTTP {RequestMethod} {RoutePattern} returned {StatusCode} in {ElapsedMilliseconds}ms",
         "Unhandled request failure {FailureType}; trace {TraceId}", "Request failed with {FailureType}; trace {TraceId}",

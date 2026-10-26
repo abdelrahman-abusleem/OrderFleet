@@ -46,6 +46,7 @@ builder.Services.AddCouriers(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddDispatch(builder.Configuration);
 builder.Services.AddRecovery(builder.Configuration);
+builder.Services.AddDataCleanup(builder.Configuration);
 builder.Services.AddEta(builder.Configuration);
 builder.Services.AddOrderRealtime();
 builder.Services.AddOperations(builder.Configuration);
