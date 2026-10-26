@@ -7,6 +7,7 @@ using OrderFleet.Domain.Payments;
 using OrderFleet.Infrastructure.Dispatch;
 using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Orders;
+using OrderFleet.Domain.Couriers;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -50,19 +51,23 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
         var restaurant = await context.Restaurants.AsNoTracking().SingleAsync(x => x.Id == order.RestaurantId, ct);
         var oldest = now - couriers.LocationFreshness;
         var latest = now + couriers.FutureSkew;
-        var candidate = await context.Couriers.FromSqlInterpolated($"""
-            SELECT c.*, c.xmin FROM "Couriers" c JOIN "CourierPositions" p ON p."CourierId" = c."Id"
-            WHERE c."Status" = 'Available' AND p."ObservedAt" >= {oldest} AND p."ObservedAt" <= {latest}
-              AND ST_DWithin(p."Location", ST_SetSRID(ST_MakePoint({(double)restaurant.Longitude}, {(double)restaurant.Latitude}),4326)::geography, {policy.RadiusMeters})
-            ORDER BY ST_Distance(p."Location", ST_SetSRID(ST_MakePoint({(double)restaurant.Longitude}, {(double)restaurant.Latitude}),4326)::geography), c."Id"
-            LIMIT 1 FOR UPDATE OF c SKIP LOCKED
-            """).SingleOrDefaultAsync(ct);
-        if (candidate is null)
-        {
-            job.Record(DispatchAttemptOutcomes.NoCourier, now, policy.MaxAttempts);
-            context.DispatchAttempts.Add(new(order.Id, DispatchAttemptOutcomes.NoCourier, now));
-            return job.Status == DispatchJobStatuses.Exhausted ? DispatchOutcome.Exhausted : DispatchOutcome.NoCourier;
-        }
+        var candidate = await CourierCandidateQuery.ClaimNearestAsync(context, restaurant.Longitude, restaurant.Latitude,
+            oldest, latest, policy.RadiusMeters, ct);
+        return candidate is null ? RecordNoCourier(context, order, job, now, policy)
+            : ReserveCourier(context, order, job, candidate, now, policy);
+    }
+
+    private static DispatchOutcome RecordNoCourier(OrderFleetDbContext context, Order order, DispatchJob job,
+        DateTimeOffset now, DispatchPolicy policy)
+    {
+        job.Record(DispatchAttemptOutcomes.NoCourier, now, policy.MaxAttempts);
+        context.DispatchAttempts.Add(new(order.Id, DispatchAttemptOutcomes.NoCourier, now));
+        return job.Status == DispatchJobStatuses.Exhausted ? DispatchOutcome.Exhausted : DispatchOutcome.NoCourier;
+    }
+
+    private static DispatchOutcome ReserveCourier(OrderFleetDbContext context, Order order, DispatchJob job, Courier candidate,
+        DateTimeOffset now, DispatchPolicy policy)
+    {
         var assignment = order.Assign(candidate.Id, now);
         candidate.Reserve(order.Id, assignment);
         context.CourierAssignments.Add(new(assignment, order.Id, candidate.Id, now, policy.PickupTimeout));
