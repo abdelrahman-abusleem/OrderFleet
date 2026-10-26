@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Errors;
 using OrderFleet.Infrastructure.Persistence;
 using OrderFleet.Infrastructure.Reliability;
 
@@ -42,7 +43,7 @@ public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> c
 
     public async Task<bool> FailAsync(OutboxLease lease, DateTimeOffset now, string errorCode, int maxAttempts, CancellationToken cancellationToken)
     {
-        if (maxAttempts is < 1 or > 100 || errorCode is not ("BrokerUnavailable" or "InvalidEnvelope")) throw new ArgumentException("Invalid retry policy.");
+        if (maxAttempts is < 1 or > 100 || errorCode is not (FailureCodes.BrokerUnavailable or FailureCodes.InvalidEnvelope)) throw new ArgumentException("Invalid retry policy.");
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);
         var next = now + retries.GetDelay(lease.Attempts, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(300));
         DateTimeOffset? dead = lease.Attempts >= maxAttempts ? now : null;

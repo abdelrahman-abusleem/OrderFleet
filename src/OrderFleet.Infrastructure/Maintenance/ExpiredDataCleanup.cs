@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OrderFleet.Application.Clock;
+using OrderFleet.Application.Messaging;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
 using OrderFleet.Infrastructure.Persistence;
@@ -24,14 +25,14 @@ public sealed class ExpiredDataCleanup(IDbContextFactory<OrderFleetDbContext> co
         // Publication alone does not prove consumption. In particular, cancellation
         // facts remain a recovery source until compensation has actually settled.
         var outbox = db.OutboxMessages.Where(x => x.PublishedAtUtc < outboxCutoff && x.LeaseId == null && x.DeadLetteredAtUtc == null
-            && ((x.Type.StartsWith("payment.")
+            && ((x.Type.StartsWith(IntegrationEventTypes.PaymentPrefix)
                 && db.FinancialAuditRecords.Any(a => a.MessageId == x.Id)
-                && db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == "financial.archive.v1"))
-                || ((x.Type.StartsWith("order.") || x.Type == "courier.location-updated.v1")
-                    && db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == "realtime.v1")
-                    && ((x.Type != "order.accepted.v1" && x.Type != "order.assignment-released.v1")
-                        || db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == "dispatch.v1"))
-                    && (x.Type != "order.cancelled.v1" || (db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == "payments.cancelled.v1")
+                && db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == ConsumerNames.FinancialArchive))
+                || ((x.Type.StartsWith(IntegrationEventTypes.OrderPrefix) || x.Type == IntegrationEventTypes.CourierLocationUpdated)
+                    && db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == ConsumerNames.Realtime)
+                    && ((x.Type != IntegrationEventTypes.OrderAccepted && x.Type != IntegrationEventTypes.AssignmentReleased)
+                        || db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == ConsumerNames.Dispatch))
+                    && (x.Type != IntegrationEventTypes.OrderCancelled || (db.InboxMessages.Any(i => i.MessageId == x.Id && i.Consumer == ConsumerNames.CancelledPayments)
                         && db.Payments.Any(p => p.OrderId == x.AggregateId && (p.State == PaymentState.Voided || p.State == PaymentState.Refunded)))))));
         var outboxKeys = outbox.OrderBy(x => x.PublishedAtUtc).ThenBy(x => x.Id).Take(settings.BatchSize).Select(x => x.Id);
         var published = await DrainAsync(() => outbox.AnyAsync(ct),

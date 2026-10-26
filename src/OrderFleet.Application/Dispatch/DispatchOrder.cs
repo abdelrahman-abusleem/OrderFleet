@@ -28,7 +28,7 @@ public sealed class DispatchEventHandler(DispatchOrder dispatch) : IIntegrationE
 {
     public async Task HandleAsync(IntegrationEvent message, CancellationToken cancellationToken)
     {
-        if (message.Type is not ("order.accepted.v1" or "order.assignment-released.v1") || message.Version != 1)
+        if (message.Type is not (IntegrationEventTypes.OrderAccepted or IntegrationEventTypes.AssignmentReleased) || message.Version != 1)
             throw new InvalidDataException("Unsupported dispatch event.");
         await dispatch.ExecuteAsync(message.AggregateId, message.MessageId, cancellationToken);
     }

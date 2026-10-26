@@ -1,13 +1,14 @@
 using RabbitMQ.Client;
+using OrderFleet.Application.Messaging;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
 public static class RabbitTopology
 {
     public static string Events(string prefix) => $"{prefix}.events.v1";
-    public static string Payments(string prefix) => $"{prefix}.payments.cancelled.v1";
-    public static string Dispatch(string prefix) => $"{prefix}.dispatch.v1";
-    public static string Realtime(string prefix) => $"{prefix}.realtime.v1";
+    public static string Payments(string prefix) => $"{prefix}.{ConsumerNames.CancelledPayments}";
+    public static string Dispatch(string prefix) => $"{prefix}.{ConsumerNames.Dispatch}";
+    public static string Realtime(string prefix) => $"{prefix}.{ConsumerNames.Realtime}";
     public static string Financial(string prefix) => $"{prefix}.financial.v1";
     public static string Dead(string queue) => $"{queue}.dead";
     public static string Retry(string queue, int attempt) => $"{queue}.retry.{attempt}";
@@ -20,11 +21,11 @@ public static class RabbitTopology
         await DeclareQueueAsync(channel, Dispatch(prefix), ct);
         await DeclareQueueAsync(channel, Realtime(prefix), ct);
         await DeclareQueueAsync(channel, Financial(prefix), ct);
-        await channel.QueueBindAsync(Payments(prefix), Events(prefix), "order.cancelled.v1", cancellationToken: ct);
-        await channel.QueueBindAsync(Dispatch(prefix), Events(prefix), "order.accepted.v1", cancellationToken: ct);
-        await channel.QueueBindAsync(Dispatch(prefix), Events(prefix), "order.assignment-released.v1", cancellationToken: ct);
+        await channel.QueueBindAsync(Payments(prefix), Events(prefix), IntegrationEventTypes.OrderCancelled, cancellationToken: ct);
+        await channel.QueueBindAsync(Dispatch(prefix), Events(prefix), IntegrationEventTypes.OrderAccepted, cancellationToken: ct);
+        await channel.QueueBindAsync(Dispatch(prefix), Events(prefix), IntegrationEventTypes.AssignmentReleased, cancellationToken: ct);
         await channel.QueueBindAsync(Realtime(prefix), Events(prefix), "order.#", cancellationToken: ct);
-        await channel.QueueBindAsync(Realtime(prefix), Events(prefix), "courier.location-updated.v1", cancellationToken: ct);
+        await channel.QueueBindAsync(Realtime(prefix), Events(prefix), IntegrationEventTypes.CourierLocationUpdated, cancellationToken: ct);
         await channel.QueueBindAsync(Financial(prefix), Events(prefix), "payment.#", cancellationToken: ct);
     }
 

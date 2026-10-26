@@ -1,4 +1,6 @@
 
+using OrderFleet.Domain.Common;
+
 namespace OrderFleet.Domain.Orders;
 
 public sealed class Order
@@ -31,7 +33,7 @@ public sealed class Order
 
     public CancellationReason? CancelReason { get; private set; }
 
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = CurrencyCodes.Sar;
 
     public IReadOnlyList<OrderItem> Items =>
         _items.AsReadOnly();

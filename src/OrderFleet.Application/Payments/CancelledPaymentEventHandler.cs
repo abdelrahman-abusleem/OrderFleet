@@ -6,7 +6,7 @@ public sealed class CancelledPaymentEventHandler(SettleCancelledPayment settle) 
 {
     public Task HandleAsync(IntegrationEvent message, CancellationToken cancellationToken)
     {
-        if (message.Type != "order.cancelled.v1" || message.Version != 1) throw new InvalidDataException("Unsupported cancellation event.");
+        if (message.Type != IntegrationEventTypes.OrderCancelled || message.Version != 1) throw new InvalidDataException("Unsupported cancellation event.");
         return settle.ExecuteAsync(message.MessageId, message.AggregateId, cancellationToken);
     }
 }

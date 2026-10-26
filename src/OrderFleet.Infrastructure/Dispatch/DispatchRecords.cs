@@ -5,7 +5,7 @@ public sealed class DispatchJob
     public Guid OrderId { get; private set; }
     public int Attempts { get; private set; }
     public int AssignmentCount { get; private set; }
-    public string Status { get; private set; } = "Pending";
+    public string Status { get; private set; } = DispatchJobStatuses.Pending;
     public DateTimeOffset NextAttemptAtUtc { get; private set; }
     public DateTimeOffset? CompletedAtUtc { get; private set; }
     public Guid? AssignmentId { get; private set; }
@@ -13,20 +13,20 @@ public sealed class DispatchJob
     internal DispatchJob(Guid orderId, DateTimeOffset now) { OrderId = orderId; NextAttemptAtUtc = now; }
     internal void Restart(DateTimeOffset now)
     {
-        Attempts = 0; Status = "Pending"; NextAttemptAtUtc = now; CompletedAtUtc = null; AssignmentId = null;
+        Attempts = 0; Status = DispatchJobStatuses.Pending; NextAttemptAtUtc = now; CompletedAtUtc = null; AssignmentId = null;
     }
-    internal void Finish(DateTimeOffset now) { Status = "Completed"; CompletedAtUtc = now; }
+    internal void Finish(DateTimeOffset now) { Status = DispatchJobStatuses.Completed; CompletedAtUtc = now; }
     internal void RestartForOperator(DateTimeOffset now) { Restart(now); AssignmentCount = 0; }
-    internal void Exhaust(DateTimeOffset now) { Status = "Exhausted"; CompletedAtUtc = now; }
+    internal void Exhaust(DateTimeOffset now) { Status = DispatchJobStatuses.Exhausted; CompletedAtUtc = now; }
     internal void Record(string outcome, DateTimeOffset now, int maxAttempts, Guid? assignmentId = null)
     {
         Attempts++;
-        if (outcome == "Assigned")
+        if (outcome == DispatchAttemptOutcomes.Assigned)
         {
             AssignmentCount++;
-            Status = "Assigned"; CompletedAtUtc = now; AssignmentId = assignmentId; return;
+            Status = DispatchJobStatuses.Assigned; CompletedAtUtc = now; AssignmentId = assignmentId; return;
         }
-        if (Attempts >= maxAttempts) { Status = "Exhausted"; CompletedAtUtc = now; return; }
+        if (Attempts >= maxAttempts) { Status = DispatchJobStatuses.Exhausted; CompletedAtUtc = now; return; }
         var baseSeconds = Math.Min(300, Math.Pow(2, Math.Min(Attempts, 8)));
         var jitter = 1 + OrderId.ToByteArray()[0] / 255d * 0.2;
         NextAttemptAtUtc = now.AddSeconds(baseSeconds * jitter);

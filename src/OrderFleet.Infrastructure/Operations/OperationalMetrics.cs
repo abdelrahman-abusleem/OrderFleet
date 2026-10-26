@@ -50,17 +50,17 @@ public sealed class OperationalMetricsWorker(OperationalMetricSampler sampler, I
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        progress.Begin("operations");
+        progress.Begin(WorkerNames.Operations);
         try
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                try { progress.BeginWork("operations"); await sampler.CollectAsync(stoppingToken); progress.Success("operations"); }
+                try { progress.BeginWork(WorkerNames.Operations); await sampler.CollectAsync(stoppingToken); progress.Success(WorkerNames.Operations); }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-                catch (Exception error) { progress.Failure("operations"); logger.LogWarning("Operational metrics unavailable {FailureType}", error.GetType().Name); }
+                catch (Exception error) { progress.Failure(WorkerNames.Operations); logger.LogWarning("Operational metrics unavailable {FailureType}", error.GetType().Name); }
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
-        finally { progress.Stop("operations"); }
+        finally { progress.Stop(WorkerNames.Operations); }
     }
 }

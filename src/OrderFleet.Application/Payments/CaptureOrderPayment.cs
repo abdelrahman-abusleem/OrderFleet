@@ -1,4 +1,5 @@
 using OrderFleet.Application.Clock;
+using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Errors;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
@@ -27,7 +28,7 @@ public sealed class CaptureOrderPayment(IPaymentStore payments, IPaymentProvider
         catch (ProviderOutcomeUnknownException)
         {
             var observedAt = clock.UtcNow;
-            if (payment.RecordUncertainCapture()) payments.RecordFact(payment, "payment.capture-uncertain.v1", observedAt);
+            if (payment.RecordUncertainCapture()) payments.RecordFact(payment, IntegrationEventTypes.PaymentCaptureUncertain, observedAt);
             payments.RecordAttempt(payment, CaptureClassification.Unknown, observedAt);
             await payments.SaveAsync(cancellationToken);
             throw;
@@ -37,14 +38,14 @@ public sealed class CaptureOrderPayment(IPaymentStore payments, IPaymentProvider
             await RecordCaptureFailureAsync(payment, CaptureClassification.PermanentDecline, cancellationToken);
             throw new OperationConflictException("Payment capture was declined.");
         }
-        if (payment.RecordCapture(capture.OccurredAt)) payments.RecordFact(payment, "payment.captured.v1", capture.OccurredAt);
+        if (payment.RecordCapture(capture.OccurredAt)) payments.RecordFact(payment, IntegrationEventTypes.PaymentCaptured, capture.OccurredAt);
         payments.RecordAttempt(payment, CaptureClassification.Succeeded, capture.OccurredAt);
     }
 
     private async Task RecordCaptureFailureAsync(Payment payment, CaptureClassification classification, CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
-        if (payment.RecordCaptureFailure(now)) payments.RecordFact(payment, "payment.failed.v1", now);
+        if (payment.RecordCaptureFailure(now)) payments.RecordFact(payment, IntegrationEventTypes.PaymentFailed, now);
         payments.RecordAttempt(payment, classification, now);
         await payments.SaveAsync(cancellationToken);
     }

@@ -1,3 +1,5 @@
+using OrderFleet.Domain.Common;
+
 namespace OrderFleet.Domain.Restaurants;
 
 public sealed class Product
@@ -6,7 +8,7 @@ public sealed class Product
     public Guid RestaurantId { get; private set; }
     public string Name { get; private set; } = "";
     public decimal Price { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = CurrencyCodes.Sar;
     public bool IsAvailable { get; private set; }
 
     private Product() { }

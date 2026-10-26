@@ -25,8 +25,8 @@ public sealed class RecoveryWorker(IServiceScopeFactory scopes, IOptions<Recover
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!options.Value.Enabled) { progress.Disable("recovery"); return; }
-        progress.Begin("recovery");
+        if (!options.Value.Enabled) { progress.Disable(WorkerNames.Recovery); return; }
+        progress.Begin(WorkerNames.Recovery);
         var failureCount = 0;
         var emptySweeps = 0;
         try
@@ -36,18 +36,18 @@ public sealed class RecoveryWorker(IServiceScopeFactory scopes, IOptions<Recover
                 try
                 {
                     using var scope = scopes.CreateScope();
-                    progress.BeginWork("recovery");
+                    progress.BeginWork(WorkerNames.Recovery);
                     var examined = await scope.ServiceProvider.GetRequiredService<RecoverOrderFleet>().ExecuteAsync(stoppingToken);
                     emptySweeps = examined == 0 ? Math.Min(16, emptySweeps + 1) : 0;
-                    progress.Success("recovery");
+                    progress.Success(WorkerNames.Recovery);
                     failureCount = 0;
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-                catch (Exception error) { progress.Failure("recovery"); failureCount++; logger.LogWarning("Recovery sweep failed {FailureType}", error.GetType().Name); }
+                catch (Exception error) { progress.Failure(WorkerNames.Recovery); failureCount++; logger.LogWarning("Recovery sweep failed {FailureType}", error.GetType().Name); }
                 var delay = failureCount == 0 ? options.Value.PollDelayMilliseconds(emptySweeps) : Math.Min(30000, 1000 * Math.Pow(2, Math.Min(5, failureCount)));
                 await Task.Delay(TimeSpan.FromMilliseconds(delay), stoppingToken);
             }
         }
-        finally { progress.Stop("recovery"); }
+        finally { progress.Stop(WorkerNames.Recovery); }
     }
 }

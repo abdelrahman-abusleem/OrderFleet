@@ -15,7 +15,7 @@ public sealed class WorkerHealthOptions
 // leases/transactions. Monotonic time avoids wall-clock adjustments hiding stalls.
 public sealed class WorkerProgress(TimeProvider time, IOptions<WorkerHealthOptions> options)
 {
-    public static readonly IReadOnlyList<string> Names = Array.AsReadOnly(new[] { "outbox", "payments", "dispatch", "realtime", "financial", "recovery", "operations" });
+    public static readonly IReadOnlyList<string> Names = Array.AsReadOnly(new[] { WorkerNames.Outbox, WorkerNames.Payments, WorkerNames.Dispatch, WorkerNames.Realtime, WorkerNames.Financial, WorkerNames.Recovery, WorkerNames.Operations });
     private sealed class Entry(long now)
     {
         public string State = "Starting";

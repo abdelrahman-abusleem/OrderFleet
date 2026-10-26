@@ -2,13 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using OrderFleet.Application.Identity;
 using OrderFleet.Application.Realtime;
+using OrderFleet.Application.Messaging;
 using OrderFleet.Domain.Orders;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
 public sealed class EfRealtimeStore(OrderFleetDbContext context) : IRealtimeStore
 {
-    private const string Consumer = "realtime.v1";
+    private const string Consumer = ConsumerNames.Realtime;
 
     public async Task<Actor> RefreshActorAsync(Actor tokenActor, CancellationToken ct)
     {
@@ -52,7 +53,7 @@ public sealed class EfRealtimeStore(OrderFleetDbContext context) : IRealtimeStor
     {
         context.InboxMessages.Add(new(messageId, Consumer, now));
         try { await context.SaveChangesAsync(ct); }
-        catch (DbUpdateException error) when (error.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_InboxMessages" })
+        catch (DbUpdateException error) when (error.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.InboxIdentity })
         { context.ChangeTracker.Clear(); }
     }
 }

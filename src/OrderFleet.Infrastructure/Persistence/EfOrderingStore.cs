@@ -55,8 +55,8 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
         context.Payments.Add(payment);
         context.OrderDeliveryInformation.Add(new(order.Id, delivery));
         context.OrderCreationRequests.Add(new(order.CustomerId, key, fingerprint, order.Id));
-        RecordAudit(order.CustomerId, order.Id, "OrderCreated", order.CreatedAt);
-        context.OutboxMessages.Add(new(IntegrationEvents.FromPayment(payment, "payment.authorized.v1", payment.AuthorizedAt)));
+        RecordAudit(order.CustomerId, order.Id, OrderAuditActions.Created, order.CreatedAt);
+        context.OutboxMessages.Add(new(IntegrationEvents.FromPayment(payment, IntegrationEventTypes.PaymentAuthorized, payment.AuthorizedAt)));
         var eventWriter = new OutboxEventWriter(context);
         var staged = eventWriter.StageOrderFacts();
         try
@@ -66,7 +66,7 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
             OutboxEventWriter.ClearCommitted(staged);
         }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_OrderCreationRequests" or "IX_Payments_AuthorizationId" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.OrderRequestIdentity or DatabaseConstraintNames.PaymentAuthorization })
         {
             await transaction.RollbackAsync(cancellationToken);
             context.ChangeTracker.Clear();
@@ -92,7 +92,7 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
         var staged = new OutboxEventWriter(context).StageOrderFacts();
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_OutboxMessages_AggregateId_AggregateSequence" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.OrderEventSequence })
         {
             // EF may insert the event before updating the root's xmin. Two stale
             // writers therefore collide on the event sequence before the root CAS.

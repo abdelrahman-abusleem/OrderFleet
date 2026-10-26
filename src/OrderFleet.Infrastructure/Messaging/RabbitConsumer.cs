@@ -14,16 +14,16 @@ public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScop
     WorkerProgress progress, IOptions<WorkerHealthOptions> health)
 {
     public Task RunPaymentsAsync(CancellationToken ct) => RunAsync(RabbitTopology.Payments(options.Value.Prefix),
-        sp => sp.GetRequiredService<CancelledPaymentEventHandler>(), "payments", ct);
+        sp => sp.GetRequiredService<CancelledPaymentEventHandler>(), WorkerNames.Payments, ct);
 
     public Task RunDispatchAsync(CancellationToken ct) => RunAsync(RabbitTopology.Dispatch(options.Value.Prefix),
-        sp => sp.GetRequiredService<DispatchEventHandler>(), "dispatch", ct);
+        sp => sp.GetRequiredService<DispatchEventHandler>(), WorkerNames.Dispatch, ct);
 
     public Task RunRealtimeAsync(CancellationToken ct) => RunAsync(RabbitTopology.Realtime(options.Value.Prefix),
-        sp => sp.GetRequiredService<RealtimeEventHandler>(), "realtime", ct);
+        sp => sp.GetRequiredService<RealtimeEventHandler>(), WorkerNames.Realtime, ct);
 
     public Task RunFinancialAsync(CancellationToken ct) => RunAsync(RabbitTopology.Financial(options.Value.Prefix),
-        sp => sp.GetRequiredService<ArchiveFinancialEvent>(), "financial", ct);
+        sp => sp.GetRequiredService<ArchiveFinancialEvent>(), WorkerNames.Financial, ct);
 
     private async Task RunAsync(string queue, Func<IServiceProvider, IIntegrationEventHandler> resolve, string worker, CancellationToken ct)
     {

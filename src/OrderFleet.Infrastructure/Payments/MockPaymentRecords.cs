@@ -1,5 +1,7 @@
 using OrderFleet.Application.Payments;
 
+using OrderFleet.Domain.Common;
+
 namespace OrderFleet.Infrastructure.Payments;
 
 public sealed class MockPaymentAuthorization
@@ -9,7 +11,7 @@ public sealed class MockPaymentAuthorization
     public string Key { get; private set; } = "";
     public string Fingerprint { get; private set; } = "";
     public decimal Amount { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = CurrencyCodes.Sar;
     public ProviderPaymentState State { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? CapturedAt { get; private set; }

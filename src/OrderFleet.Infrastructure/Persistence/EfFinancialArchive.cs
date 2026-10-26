@@ -7,7 +7,7 @@ namespace OrderFleet.Infrastructure.Persistence;
 
 public sealed class EfFinancialArchive(OrderFleetDbContext context, IClock clock) : IFinancialArchive
 {
-    public const string Consumer = "financial.archive.v1";
+    public const string Consumer = ConsumerNames.FinancialArchive;
     public async Task StoreAsync(IntegrationEvent envelope, FinancialFact fact, CancellationToken ct)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(ct);

@@ -4,12 +4,15 @@ using OrderFleet.Application.Dispatch;
 using OrderFleet.Application.Errors;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
+using OrderFleet.Infrastructure.Dispatch;
+using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Orders;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
 public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> contexts, CourierPolicy couriers) : IDispatchStore
 {
-    private const string Consumer = "dispatch.v1";
+    private const string Consumer = ConsumerNames.Dispatch;
 
     public async Task<DispatchOutcome> TryAssignAsync(Guid orderId, Guid? messageId, DateTimeOffset now, DispatchPolicy policy, CancellationToken ct)
     {
@@ -35,12 +38,12 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         var job = await context.DispatchJobs.SingleOrDefaultAsync(x => x.OrderId == order.Id, ct);
         if (job is null) { job = new(order.Id, now); context.DispatchJobs.Add(job); }
-        if (job.Status == "Exhausted") return DispatchOutcome.Exhausted;
-        if (job.Status == "Assigned") job.Restart(now);
+        if (job.Status == DispatchJobStatuses.Exhausted) return DispatchOutcome.Exhausted;
+        if (job.Status == DispatchJobStatuses.Assigned) job.Restart(now);
         if (job.AssignmentCount >= policy.MaxAssignments)
         {
             job.Exhaust(now);
-            context.DispatchAttempts.Add(new(order.Id, "AssignmentLimit", now));
+            context.DispatchAttempts.Add(new(order.Id, DispatchAttemptOutcomes.AssignmentLimit, now));
             return DispatchOutcome.Exhausted;
         }
         if (job.NextAttemptAtUtc > now) return DispatchOutcome.NotDue;
@@ -56,16 +59,16 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
             """).SingleOrDefaultAsync(ct);
         if (candidate is null)
         {
-            job.Record("NoCourier", now, policy.MaxAttempts);
-            context.DispatchAttempts.Add(new(order.Id, "NoCourier", now));
-            return job.Status == "Exhausted" ? DispatchOutcome.Exhausted : DispatchOutcome.NoCourier;
+            job.Record(DispatchAttemptOutcomes.NoCourier, now, policy.MaxAttempts);
+            context.DispatchAttempts.Add(new(order.Id, DispatchAttemptOutcomes.NoCourier, now));
+            return job.Status == DispatchJobStatuses.Exhausted ? DispatchOutcome.Exhausted : DispatchOutcome.NoCourier;
         }
         var assignment = order.Assign(candidate.Id, now);
         candidate.Reserve(order.Id, assignment);
         context.CourierAssignments.Add(new(assignment, order.Id, candidate.Id, now, policy.PickupTimeout));
-        job.Record("Assigned", now, policy.MaxAttempts, assignment);
-        context.DispatchAttempts.Add(new(order.Id, "Assigned", now, candidate.Id, assignment));
-        new EfOrderingStore(context).RecordAudit(Guid.Empty, order.Id, "CourierDispatched", now);
+        job.Record(DispatchAttemptOutcomes.Assigned, now, policy.MaxAttempts, assignment);
+        context.DispatchAttempts.Add(new(order.Id, DispatchAttemptOutcomes.Assigned, now, candidate.Id, assignment));
+        new EfOrderingStore(context).RecordAudit(Guid.Empty, order.Id, OrderAuditActions.CourierDispatched, now);
         return DispatchOutcome.Assigned;
     }
 
@@ -94,7 +97,7 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
         var store = new EfOrderingStore(context);
-        store.RecordAudit(actorId, orderId, $"Courier{action}", now);
+        store.RecordAudit(actorId, orderId, OrderAuditActions.CourierActionPrefix + action, now);
         await store.SaveAsync(ct);
         await transaction.CommitAsync(ct);
         order.ClearDomainEvents();

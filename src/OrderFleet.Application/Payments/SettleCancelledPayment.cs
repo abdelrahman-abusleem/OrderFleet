@@ -1,4 +1,5 @@
 using OrderFleet.Application.Clock;
+using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Errors;
 using OrderFleet.Domain.Payments;
 
@@ -8,7 +9,7 @@ public sealed class SettleCancelledPayment(IPaymentStore store, IPaymentProvider
 {
     public async Task ExecuteAsync(Guid messageId, Guid orderId, CancellationToken cancellationToken)
     {
-        const string consumer = "payments.cancelled.v1";
+        const string consumer = ConsumerNames.CancelledPayments;
         if (await store.IsConsumedAsync(messageId, consumer, cancellationToken)) return;
         if (!await store.IsCancelledAsync(orderId, cancellationToken))
             throw new OperationConflictException("Cancellation fact does not match durable order state.");
@@ -19,11 +20,11 @@ public sealed class SettleCancelledPayment(IPaymentStore store, IPaymentProvider
         {
             if (payment.State is PaymentState.Authorized or PaymentState.Failed or PaymentState.PendingReconciliation)
                 payment.RecordCapture(settled.CapturedAt ?? settled.OccurredAt);
-            if (payment.RecordRefund(settled.OccurredAt)) store.RecordFact(payment, "payment.refunded.v1", settled.OccurredAt);
+            if (payment.RecordRefund(settled.OccurredAt)) store.RecordFact(payment, IntegrationEventTypes.PaymentRefunded, settled.OccurredAt);
         }
         else if (settled.State == ProviderPaymentState.Voided)
         {
-            if (payment.RecordVoid(settled.OccurredAt)) store.RecordFact(payment, "payment.voided.v1", settled.OccurredAt);
+            if (payment.RecordVoid(settled.OccurredAt)) store.RecordFact(payment, IntegrationEventTypes.PaymentVoided, settled.OccurredAt);
         }
         else throw new OperationConflictException("Payment settlement is incomplete.");
         store.RecordConsumed(messageId, consumer, clock.UtcNow);

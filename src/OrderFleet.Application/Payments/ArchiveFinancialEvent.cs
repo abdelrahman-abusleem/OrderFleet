@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OrderFleet.Application.Messaging;
+using OrderFleet.Domain.Common;
 
 namespace OrderFleet.Application.Payments;
 
@@ -20,12 +21,12 @@ public sealed class ArchiveFinancialEvent(IFinancialArchive archive) : IIntegrat
     {
         var state = message.Type switch
         {
-            "payment.authorized.v1" => "Authorized",
-            "payment.captured.v1" => "Captured",
-            "payment.failed.v1" => "Failed",
-            "payment.capture-uncertain.v1" => "PendingReconciliation",
-            "payment.voided.v1" => "Voided",
-            "payment.refunded.v1" => "Refunded",
+            IntegrationEventTypes.PaymentAuthorized => "Authorized",
+            IntegrationEventTypes.PaymentCaptured => "Captured",
+            IntegrationEventTypes.PaymentFailed => "Failed",
+            IntegrationEventTypes.PaymentCaptureUncertain => "PendingReconciliation",
+            IntegrationEventTypes.PaymentVoided => "Voided",
+            IntegrationEventTypes.PaymentRefunded => "Refunded",
             _ => throw new InvalidDataException("Unsupported financial fact.")
         };
         if (message.Version != 1 || message.MessageId == Guid.Empty || message.OccurredAtUtc == default
@@ -33,7 +34,7 @@ public sealed class ArchiveFinancialEvent(IFinancialArchive archive) : IIntegrat
         var fact = JsonSerializer.Deserialize<FinancialFact>(message.PayloadJson, Json);
         if (fact is null || fact.PaymentId == Guid.Empty || fact.AuthorizationId == Guid.Empty || fact.OrderId == Guid.Empty
             || fact.OrderId != message.AggregateId || fact.Amount <= 0 || decimal.Round(fact.Amount, 2) != fact.Amount
-            || fact.Currency != "SAR" || fact.State != state) throw new InvalidDataException("Invalid financial fact.");
+            || fact.Currency != CurrencyCodes.Sar || fact.State != state) throw new InvalidDataException("Invalid financial fact.");
         return archive.StoreAsync(message, fact, cancellationToken);
     }
 }

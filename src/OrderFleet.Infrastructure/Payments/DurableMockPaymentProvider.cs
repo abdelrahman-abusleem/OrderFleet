@@ -5,6 +5,7 @@ using OrderFleet.Application.Clock;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Payments;
 using OrderFleet.Infrastructure.Persistence;
+using OrderFleet.Domain.Common;
 
 namespace OrderFleet.Infrastructure.Payments;
 
@@ -18,7 +19,7 @@ public sealed class DurableMockPaymentProvider(IDbContextFactory<OrderFleetDbCon
     {
         if (actorId == Guid.Empty || string.IsNullOrWhiteSpace(key) || key.Length > 100 || fingerprint.Length != 64)
             throw new ArgumentException("Invalid authorization scope.");
-        if (amount <= 0 || decimal.Round(amount, 2) != amount || currency != "SAR")
+        if (amount <= 0 || decimal.Round(amount, 2) != amount || currency != CurrencyCodes.Sar)
             throw new ArgumentException("Invalid authorization amount or currency.");
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);
         var existing = await context.MockPaymentAuthorizations.AsNoTracking()
@@ -32,7 +33,7 @@ public sealed class DurableMockPaymentProvider(IDbContextFactory<OrderFleetDbCon
         context.MockPaymentEffects.Add(new(authorization.Id, "Authorize", authorization.State == ProviderPaymentState.Authorized, now));
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_MockPaymentAuthorizations_ActorId_Key" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.MockAuthorizationRequest })
         {
             await using var fresh = await contexts.CreateDbContextAsync(cancellationToken);
             var winner = await fresh.MockPaymentAuthorizations.AsNoTracking()

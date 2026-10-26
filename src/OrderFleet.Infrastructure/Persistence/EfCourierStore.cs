@@ -31,14 +31,14 @@ public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock, IO
         if (observed && position is not null && await ShouldEmitAsync(courier, position, now, cancellationToken))
         {
             position.RecordEmission(courier.AssignmentId!.Value, now);
-            context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), "courier.location-updated.v1", 1,
+                context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), IntegrationEventTypes.CourierLocationUpdated, 1,
                 now, courier.Id, System.Diagnostics.Activity.Current?.TraceId.ToString(),
                 JsonSerializer.Serialize(new { courierId = courier.Id, observedAt = courier.LocationObservedAt }),
                 TraceParent: OrderFleet.Application.Diagnostics.OrderFleetDiagnostics.CurrentTraceParent)));
         }
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Couriers" or "PK_CourierPositions" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.CourierIdentity or DatabaseConstraintNames.CourierPositionIdentity })
         {
             throw new OperationConflictException("Courier profile changed concurrently; refresh before retrying.");
         }

@@ -27,7 +27,7 @@ public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access
             throw new OperationConflictException("The restaurant acceptance deadline has elapsed.");
         }
         order.Accept(now);
-        store.RecordAudit(actor.Id, order.Id, "OrderAccepted", now);
+        store.RecordAudit(actor.Id, order.Id, OrderAuditActions.Accepted, now);
         await store.SaveAsync(cancellationToken);
     }
 
@@ -36,7 +36,7 @@ public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access
         var order = await RestaurantOrderAsync(id, actor, cancellationToken);
         var now = clock.UtcNow;
         order.Cancel(CancellationReason.RestaurantRejected, now);
-        store.RecordAudit(actor.Id, order.Id, "OrderRejected", now);
+        store.RecordAudit(actor.Id, order.Id, OrderAuditActions.Rejected, now);
         await store.SaveAsync(cancellationToken);
     }
 
@@ -52,7 +52,7 @@ public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access
         else throw new ResourceNotFoundException();
         var now = clock.UtcNow;
         order.Cancel(reason, now);
-        store.RecordAudit(actor.Id, order.Id, "OrderCancelled", now);
+        store.RecordAudit(actor.Id, order.Id, OrderAuditActions.Cancelled, now);
         await store.SaveAsync(cancellationToken);
     }
 

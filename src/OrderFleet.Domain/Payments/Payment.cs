@@ -1,4 +1,5 @@
 using OrderFleet.Domain.Orders;
+using OrderFleet.Domain.Common;
 
 namespace OrderFleet.Domain.Payments;
 
@@ -10,7 +11,7 @@ public sealed class Payment
     public Guid OrderId { get; private set; }
     public Guid AuthorizationId { get; private set; }
     public decimal Amount { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = CurrencyCodes.Sar;
     public PaymentState State { get; private set; }
     public DateTimeOffset AuthorizedAt { get; private set; }
     public DateTimeOffset? CapturedAt { get; private set; }
@@ -24,7 +25,7 @@ public sealed class Payment
         if (orderId == Guid.Empty) throw new ArgumentException("Order is required.", nameof(orderId));
         if (authorizationId == Guid.Empty) throw new ArgumentException("Authorization is required.", nameof(authorizationId));
         if (amount <= 0 || decimal.Round(amount, 2) != amount) throw new ArgumentOutOfRangeException(nameof(amount));
-        if (currency != "SAR") throw new ArgumentException("Only SAR is supported.", nameof(currency));
+        if (currency != CurrencyCodes.Sar) throw new ArgumentException("Only SAR is supported.", nameof(currency));
         return new()
         {
             Id = Guid.NewGuid(),

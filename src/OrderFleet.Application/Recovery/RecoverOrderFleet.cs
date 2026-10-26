@@ -1,4 +1,5 @@
 using OrderFleet.Application.Clock;
+using OrderFleet.Application.Errors;
 using OrderFleet.Application.Dispatch;
 using OrderFleet.Application.Payments;
 using OrderFleet.Application.Diagnostics;
@@ -60,7 +61,7 @@ public sealed class RecoverOrderFleet(IRecoveryStore store, DispatchOrder dispat
         {
             var permanent = error is DomainException or ArgumentException or InvalidDataException;
             OrderFleetDiagnostics.Errors.Add(1, new System.Diagnostics.TagList { { "component", "recovery" }, { "operation", operation } });
-            await store.RecordFailureAsync(operation, id, clock.UtcNow, permanent ? "InvariantViolation" : "DependencyOrConflict",
+            await store.RecordFailureAsync(operation, id, clock.UtcNow, permanent ? FailureCodes.InvariantViolation : FailureCodes.DependencyOrConflict,
                 permanent ? 1 : policy.MaxFailureAttempts, ct);
             return;
         }

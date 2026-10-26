@@ -1,4 +1,5 @@
 using OrderFleet.Application.Clock;
+using OrderFleet.Application.Messaging;
 using OrderFleet.Domain.Payments;
 
 namespace OrderFleet.Application.Payments;
@@ -14,12 +15,12 @@ public sealed class ReconcilePaymentCapture(IPaymentStore store, IPaymentProvide
         if (actual is null) return;
         if (actual.Succeeded)
         {
-            if (payment.RecordCapture(actual.OccurredAt)) store.RecordFact(payment, "payment.captured.v1", actual.OccurredAt);
+            if (payment.RecordCapture(actual.OccurredAt)) store.RecordFact(payment, IntegrationEventTypes.PaymentCaptured, actual.OccurredAt);
         }
         else
         {
             payment.RecordReconciledDecline(clock.UtcNow);
-            store.RecordFact(payment, "payment.failed.v1", clock.UtcNow);
+            store.RecordFact(payment, IntegrationEventTypes.PaymentFailed, clock.UtcNow);
         }
         store.RecordAttempt(payment, actual.Succeeded ? CaptureClassification.Succeeded : CaptureClassification.PermanentDecline, clock.UtcNow);
         await store.SaveAsync(ct);

@@ -4,6 +4,7 @@ using OrderFleet.Application.Operations;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
 using OrderFleet.Application.Identity;
+using OrderFleet.Infrastructure.Dispatch;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -20,8 +21,8 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
         var oldest = await pending.MinAsync(x => (DateTimeOffset?)x.OccurredAtUtc, ct);
         return new(await pending.LongCountAsync(ct), await context.OutboxMessages.LongCountAsync(x => x.DeadLetteredAtUtc != null, ct),
             oldest.HasValue ? Math.Max(0, (now - oldest.Value).TotalSeconds) : 0,
-            await context.DispatchJobs.LongCountAsync(x => x.Status == "Pending", ct),
-            await context.DispatchJobs.LongCountAsync(x => x.Status == "Exhausted", ct),
+            await context.DispatchJobs.LongCountAsync(x => x.Status == DispatchJobStatuses.Pending, ct),
+            await context.DispatchJobs.LongCountAsync(x => x.Status == DispatchJobStatuses.Exhausted, ct),
             await context.Payments.LongCountAsync(x => x.State == PaymentState.PendingReconciliation, ct),
             await context.Payments.LongCountAsync(x => x.State != PaymentState.Voided && x.State != PaymentState.Refunded
                 && context.Orders.Any(o => o.Id == x.OrderId && o.Status == OrderStatus.Cancelled), ct),
@@ -40,7 +41,7 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
         // Lock a real actor row first to serialize same-actor operation keys across
         // different targets without relying on an in-process mutex.
         await LockActorAsync(actorId, ct);
-        if (await ReplayAsync(actorId, "RetryOutbox", key, id, ct)) return;
+        if (await ReplayAsync(actorId, OperationNames.RetryOutbox, key, id, ct)) return;
         var message = await context.OutboxMessages.FromSqlInterpolated(
             $"SELECT * FROM \"OutboxMessages\" WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct) ?? throw new ResourceNotFoundException();
         if (message.PublishedAtUtc is not null || message.LeasedUntilUtc > now) throw new OperationConflictException("Message cannot be retried while published or actively leased.");
@@ -48,7 +49,7 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
         var attempts = message.Attempts;
         var outcome = message.LastErrorCode;
         message.ResetForRetry(now);
-        Record(actorId, "RetryOutbox", key, id, now, attempts, outcome);
+        Record(actorId, OperationNames.RetryOutbox, key, id, now, attempts, outcome);
         await context.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
     }
@@ -57,7 +58,7 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
     {
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
         await LockActorAsync(actorId, ct);
-        if (await ReplayAsync(actorId, "RetryDispatch", key, orderId, ct)) return;
+        if (await ReplayAsync(actorId, OperationNames.RetryDispatch, key, orderId, ct)) return;
         var order = await context.Orders.FromSqlInterpolated($"SELECT *, xmin FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE")
             .SingleOrDefaultAsync(ct) ?? throw new ResourceNotFoundException();
         if (order.Status != OrderStatus.Accepted || !await context.Payments.AnyAsync(x => x.OrderId == orderId && x.State == PaymentState.Captured, ct))
@@ -67,7 +68,7 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
         var outcome = job?.Status;
         if (job is null) context.DispatchJobs.Add(new(orderId, now));
         else job.RestartForOperator(now);
-        Record(actorId, "RetryDispatch", key, orderId, now, attempts, outcome);
+        Record(actorId, OperationNames.RetryDispatch, key, orderId, now, attempts, outcome);
         await context.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
     }
@@ -95,7 +96,7 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
 
     public async Task RetryRecoveryAsync(string operation, Guid resourceId, Guid actorId, string key, DateTimeOffset now, CancellationToken ct)
     {
-        var scope = "RetryRecovery:" + operation;
+        var scope = OperationNames.RetryRecoveryPrefix + operation;
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
         await LockActorAsync(actorId, ct);
         if (await ReplayAsync(actorId, scope, key, resourceId, ct)) return;

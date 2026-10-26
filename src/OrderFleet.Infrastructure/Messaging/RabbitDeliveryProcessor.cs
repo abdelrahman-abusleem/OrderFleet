@@ -1,9 +1,11 @@
 using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Errors;
 using RabbitMQ.Client;
 using System.Diagnostics;
 using System.Text;
 using OrderFleet.Application.Diagnostics;
 using Microsoft.Extensions.Logging;
+using OrderFleet.Infrastructure.Operations;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
@@ -31,7 +33,7 @@ public sealed class RabbitDeliveryProcessor(ILogger<RabbitDeliveryProcessor>? lo
         catch (Exception error)
         {
             permanent = error is InvalidDataException or System.Text.Json.JsonException;
-            failure = permanent ? "InvalidEnvelope" : "ProcessingFailed";
+            failure = permanent ? FailureCodes.InvalidEnvelope : FailureCodes.ProcessingFailed;
             activity?.SetStatus(ActivityStatusCode.Error);
             activity?.SetTag("error.type", failure);
         }
@@ -42,9 +44,9 @@ public sealed class RabbitDeliveryProcessor(ILogger<RabbitDeliveryProcessor>? lo
                 ? RabbitTopology.Dead(queue) : RabbitTopology.Retry(queue, attempt + 1);
             if (target == RabbitTopology.Dead(queue)) OrderFleetDiagnostics.ConsumerDeadLetters.Add(1);
             else OrderFleetDiagnostics.ConsumerRetries.Add(1);
-            var consumer = queue.EndsWith(".financial.v1", StringComparison.Ordinal) ? "financial"
-                : queue.EndsWith(".dispatch.v1", StringComparison.Ordinal) ? "dispatch"
-                : queue.EndsWith(".realtime.v1", StringComparison.Ordinal) ? "realtime" : "payments";
+            var consumer = queue.EndsWith(".financial.v1", StringComparison.Ordinal) ? WorkerNames.Financial
+                : queue.EndsWith(".dispatch.v1", StringComparison.Ordinal) ? WorkerNames.Dispatch
+                : queue.EndsWith(".realtime.v1", StringComparison.Ordinal) ? WorkerNames.Realtime : WorkerNames.Payments;
             var messageId = Guid.TryParse(properties.MessageId, out var parsed) ? parsed : Guid.Empty;
             logger?.Log(target == RabbitTopology.Dead(queue) ? LogLevel.Error : LogLevel.Warning,
                 "Consumer {Consumer} failed {MessageId} {FailureCode} attempt {Attempt}", consumer, messageId, failure, attempt + 1);

@@ -11,10 +11,10 @@ public static class EventEnvelopeCodec
     { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16 };
     private static readonly HashSet<string> Types =
     [
-        "order.created.v1", "order.accepted.v1", "order.courier-assigned.v1", "order.assignment-released.v1",
-        "order.picked-up.v1", "order.delivered.v1", "order.cancelled.v1", "payment.authorized.v1",
-        "payment.captured.v1", "payment.failed.v1", "payment.capture-uncertain.v1", "payment.voided.v1", "payment.refunded.v1",
-        "courier.location-updated.v1"
+        IntegrationEventTypes.OrderCreated, IntegrationEventTypes.OrderAccepted, IntegrationEventTypes.CourierAssigned, IntegrationEventTypes.AssignmentReleased,
+        IntegrationEventTypes.OrderPickedUp, IntegrationEventTypes.OrderDelivered, IntegrationEventTypes.OrderCancelled, IntegrationEventTypes.PaymentAuthorized,
+        IntegrationEventTypes.PaymentCaptured, IntegrationEventTypes.PaymentFailed, IntegrationEventTypes.PaymentCaptureUncertain, IntegrationEventTypes.PaymentVoided, IntegrationEventTypes.PaymentRefunded,
+        IntegrationEventTypes.CourierLocationUpdated
     ];
 
     public static byte[] Encode(IntegrationEvent message)
@@ -40,10 +40,10 @@ public static class EventEnvelopeCodec
             || !Types.Contains(message.Type) || message.OccurredAtUtc == default || message.OccurredAtUtc.Offset != TimeSpan.Zero
             || message.CorrelationId?.Length > 64 || message.PayloadJson is null || message.PayloadJson.Length > 60000
             || (message.TraceParent is not null && (message.TraceParent.Length > 55 || !ActivityContext.TryParse(message.TraceParent, null, out _)))
-            || (message.Type.StartsWith("order.", StringComparison.Ordinal) && message.AggregateSequence is not > 0))
+            || (message.Type.StartsWith(IntegrationEventTypes.OrderPrefix, StringComparison.Ordinal) && message.AggregateSequence is not > 0))
             throw new InvalidDataException("Invalid event envelope.");
         using var payload = JsonDocument.Parse(message.PayloadJson, new JsonDocumentOptions { MaxDepth = 8 });
-        var identity = message.Type == "courier.location-updated.v1" ? "courierId" : "orderId";
+        var identity = message.Type == IntegrationEventTypes.CourierLocationUpdated ? "courierId" : "orderId";
         if (payload.RootElement.ValueKind != JsonValueKind.Object
             || !payload.RootElement.TryGetProperty(identity, out var order) || order.ValueKind != JsonValueKind.String
             || !order.TryGetGuid(out var id) || id != message.AggregateId

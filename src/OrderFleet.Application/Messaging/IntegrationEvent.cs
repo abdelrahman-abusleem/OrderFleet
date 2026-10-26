@@ -17,13 +17,13 @@ public static class IntegrationEvents
     {
         var type = fact switch
         {
-            OrderCreated => "order.created.v1",
-            OrderAccepted => "order.accepted.v1",
-            CourierAssigned => "order.courier-assigned.v1",
-            AssignmentReleased => "order.assignment-released.v1",
-            OrderPickedUp => "order.picked-up.v1",
-            OrderDelivered => "order.delivered.v1",
-            OrderCancelled => "order.cancelled.v1",
+            OrderCreated => IntegrationEventTypes.OrderCreated,
+            OrderAccepted => IntegrationEventTypes.OrderAccepted,
+            CourierAssigned => IntegrationEventTypes.CourierAssigned,
+            AssignmentReleased => IntegrationEventTypes.AssignmentReleased,
+            OrderPickedUp => IntegrationEventTypes.OrderPickedUp,
+            OrderDelivered => IntegrationEventTypes.OrderDelivered,
+            OrderCancelled => IntegrationEventTypes.OrderCancelled,
             _ => throw new ArgumentOutOfRangeException(nameof(fact))
         };
         Guid? courier = fact switch { CourierAssigned x => x.CourierId, OrderPickedUp x => x.CourierId, OrderDelivered x => x.CourierId, _ => null };

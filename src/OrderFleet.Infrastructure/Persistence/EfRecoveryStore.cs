@@ -4,6 +4,10 @@ using OrderFleet.Application.Payments;
 using OrderFleet.Application.Recovery;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
+using OrderFleet.Infrastructure.Dispatch;
+using OrderFleet.Application.Messaging;
+using OrderFleet.Application.Orders;
+using OrderFleet.Application.Errors;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
@@ -28,7 +32,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
             x => x.OrderId == orderId && x.AcceptanceDeadline <= now, ct)) return false;
         order.Cancel(CancellationReason.AcceptanceTimedOut, now);
         var store = new EfOrderingStore(context);
-        store.RecordAudit(Guid.Empty, orderId, "AcceptanceTimedOut", now);
+        store.RecordAudit(Guid.Empty, orderId, OrderAuditActions.AcceptanceTimedOut, now);
         await store.SaveAsync(ct);
         await transaction.CommitAsync(ct);
         order.ClearDomainEvents();
@@ -55,7 +59,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
                 && x.PickedUpAtUtc == null && x.ReleasedAtUtc == null && x.PickupDeadlineUtc <= now, ct)) return false;
         order.ReleaseAssignment(assignmentId, now);
         var store = new EfOrderingStore(context);
-        store.RecordAudit(Guid.Empty, orderId, "PickupReservationExpired", now);
+        store.RecordAudit(Guid.Empty, orderId, OrderAuditActions.PickupReservationExpired, now);
         await store.SaveAsync(ct);
         await transaction.CommitAsync(ct);
         order.ClearDomainEvents();
@@ -68,7 +72,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
         return await context.Orders.Where(x => x.Status == OrderStatus.Accepted
                 && context.Payments.Any(p => p.OrderId == x.Id && p.State == PaymentState.Captured)
                 && (!context.DispatchJobs.Any(j => j.OrderId == x.Id)
-                    || context.DispatchJobs.Any(j => j.OrderId == x.Id && j.Status == "Pending" && j.NextAttemptAtUtc <= now))
+                    || context.DispatchJobs.Any(j => j.OrderId == x.Id && j.Status == DispatchJobStatuses.Pending && j.NextAttemptAtUtc <= now))
                 && !context.RecoveryWorkFailures.Any(f => f.Operation == RecoveryWork.DispatchRetry && f.ResourceId == x.Id
                     && f.ResolvedAtUtc == null && (f.DeadLetteredAtUtc != null || f.NextAttemptAtUtc > now)))
             .OrderBy(x => x.AcceptedAt).ThenBy(x => x.Id).Select(x => x.Id).Take(count).ToArrayAsync(ct);
@@ -77,7 +81,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
     public async Task<IReadOnlyList<CancelledPayment>> UnsettledCancellationsAsync(DateTimeOffset now, int count, CancellationToken ct)
     {
         await using var context = await contexts.CreateDbContextAsync(ct);
-        return await context.OutboxMessages.Where(x => x.Type == "order.cancelled.v1"
+        return await context.OutboxMessages.Where(x => x.Type == IntegrationEventTypes.OrderCancelled
             && context.Payments.Any(p => p.OrderId == x.AggregateId && p.State != PaymentState.Voided && p.State != PaymentState.Refunded)
             && !context.RecoveryWorkFailures.Any(f => f.Operation == RecoveryWork.PaymentSettlement && f.ResourceId == x.AggregateId
                 && f.ResolvedAtUtc == null && (f.DeadLetteredAtUtc != null || f.NextAttemptAtUtc > now)))
@@ -120,7 +124,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
 
     public async Task RecordFailureAsync(string operation, Guid resourceId, DateTimeOffset now, string errorCode, int maxAttempts, CancellationToken ct)
     {
-        if (!RecoveryWork.All.Contains(operation) || errorCode is not ("InvariantViolation" or "DependencyOrConflict")
+        if (!RecoveryWork.All.Contains(operation) || errorCode is not (FailureCodes.InvariantViolation or FailureCodes.DependencyOrConflict)
             || maxAttempts is < 1 or > 100) throw new ArgumentException("Invalid recovery failure record.");
         await using var context = await contexts.CreateDbContextAsync(ct);
         await using var transaction = await context.Database.BeginTransactionAsync(ct);

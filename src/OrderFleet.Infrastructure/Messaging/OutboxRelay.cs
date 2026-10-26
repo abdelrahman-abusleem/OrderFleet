@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrderFleet.Application.Clock;
+using OrderFleet.Application.Errors;
 using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Diagnostics;
 
@@ -23,9 +24,9 @@ public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, I
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception error)
             {
-                var code = error is InvalidDataException or System.Text.Json.JsonException ? "InvalidEnvelope" : "BrokerUnavailable";
+                var code = error is InvalidDataException or System.Text.Json.JsonException ? FailureCodes.InvalidEnvelope : FailureCodes.BrokerUnavailable;
                 OrderFleetDiagnostics.OutboxRetries.Add(1, new KeyValuePair<string, object?>("reason", code));
-                await store.FailAsync(lease, clock.UtcNow, code, code == "InvalidEnvelope" ? 1 : settings.OutboxMaxAttempts, cancellationToken);
+                await store.FailAsync(lease, clock.UtcNow, code, code == FailureCodes.InvalidEnvelope ? 1 : settings.OutboxMaxAttempts, cancellationToken);
                 logger.LogWarning("Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}", lease.Message.MessageId, code, lease.Attempts);
                 continue;
             }
