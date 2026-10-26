@@ -159,3 +159,7 @@ Initial full baseline431 passed (257 Domain+174 Integration),0 failed/skipped; r
 ### Hardening Gate0 recovery — 2026-10-26
 
 VERIFIED after a single explicitly authorized normal Docker Desktop restart. No persistent service failed automatic recovery; no existing container/image/volume/data deletion or manual state changes. Full real-infrastructure recheck432 passed (257 Domain+175 Integration),0 failed/skipped, exit0. The earlier Docker HTTP500 failures remain documented; they are not reclassified as passes. Phase0 restore/build0 warnings/errors/full formatter/unchanged dependency graph/inventory complete. No schema changes. Phase1 begins with tests only; expected-red drivers must be reported separately from passing regressions.
+
+### Hardening Gate1 — expected-red driver milestone
+
+Tests-only phase: Release build0 warnings/errors; targeted14 new cases10 passed/4 expected failed, full257 Domain+185 Integration passed with4 explicit Phase2 drivers failing,0 skipped. Existing432 cases pass. This establishes failure evidence, not a green production gate. Phase2 must turn all four drivers green before its gate. No schema/production changes or existing test modifications. See15_HARDENING_PASS.md.
