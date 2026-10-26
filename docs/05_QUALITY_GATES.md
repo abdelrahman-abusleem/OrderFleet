@@ -167,3 +167,7 @@ Tests-only phase: Release build0 warnings/errors; targeted14 new cases10 passed/
 ### Hardening Gate2 — VERIFIED
 
 Release build0 warnings/errors, full formatter/analyzer verification exit0, full real-infrastructure solution tests499 passed (258 Domain+241 Integration),0 failed/skipped. All four preserved Phase1 drivers green. Includes deterministic payment races, assignment fences, GPS transactional/replay/throttle boundaries, publish/complete failure classification, bounded retention/relay and PostgreSQL lock contention, aborted requests and proxy spoofing. Six EXPLAIN ANALYZE BUFFERS plans over100000 orders/jobs committed before/after one evidence-driven partial index. EF model drift clean; two additive migrations, all17 historical migrations preserved. Exact commands in07_PROGRESS_AND_HANDOFF.md. Gate5 fresh migration/bootstrap smoke still pending; no operational-readiness or remote CI claim.
+
+### Hardening group3A — VERIFIED
+
+Named fixed vocabularies preserve stored/wire strings; seven actual PostgreSQL dispatch-vocabulary round trips pass and EF drift is clean. DomainException pure shared-namespace move retains every existing exact-exception assertion and HTTP/error mapping. Strict Release build0 warnings/errors,258 Domain+248 full Integration=506 passed,0 failed/skipped. No schema/package change in3A. Continue group3B; exact commands/results in07_PROGRESS_AND_HANDOFF.md.

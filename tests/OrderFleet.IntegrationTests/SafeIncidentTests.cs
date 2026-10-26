@@ -51,7 +51,7 @@ public sealed class SafeIncidentTests
         await using var app = builder.Build(); _ = app.Services.GetRequiredService<SafeExceptionListener>();
         app.UseMiddleware<SafeRequestLogging>(); app.UseExceptionHandler();
         app.MapGet("/unexpected", (Func<string>)(() => throw new InvalidOperationException(marker)));
-        app.MapGet("/business", (Func<string>)(() => throw new OrderFleet.Domain.Orders.DomainException(marker)));
+        app.MapGet("/business", (Func<string>)(() => throw new OrderFleet.Domain.Common.DomainException(marker)));
         await app.StartAsync(); using var client = app.GetTestClient();
         var unexpected = await client.GetAsync("/unexpected");
         Assert.Equal(HttpStatusCode.InternalServerError, unexpected.StatusCode);

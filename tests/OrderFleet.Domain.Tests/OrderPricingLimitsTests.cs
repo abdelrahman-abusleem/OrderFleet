@@ -1,4 +1,5 @@
 using OrderFleet.Domain.Orders;
+using OrderFleet.Domain.Common;
 
 namespace OrderFleet.Domain.Tests;
 

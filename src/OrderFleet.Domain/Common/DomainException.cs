@@ -1,3 +1,3 @@
-namespace OrderFleet.Domain.Orders;
+namespace OrderFleet.Domain.Common;
 
 public sealed class DomainException(string message) : Exception(message);

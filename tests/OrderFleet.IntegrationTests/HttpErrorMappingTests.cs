@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFleet.Api.Errors;
-using OrderFleet.Domain.Orders;
+using OrderFleet.Domain.Common;
 
 namespace OrderFleet.IntegrationTests;
 

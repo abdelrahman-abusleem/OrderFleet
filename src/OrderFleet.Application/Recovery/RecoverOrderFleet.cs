@@ -3,7 +3,7 @@ using OrderFleet.Application.Errors;
 using OrderFleet.Application.Dispatch;
 using OrderFleet.Application.Payments;
 using OrderFleet.Application.Diagnostics;
-using OrderFleet.Domain.Orders;
+using OrderFleet.Domain.Common;
 
 namespace OrderFleet.Application.Recovery;
 
