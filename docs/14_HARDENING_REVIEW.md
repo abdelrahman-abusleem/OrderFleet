@@ -44,7 +44,7 @@ Primary source: [PostgreSQL17 statistics snapshots](https://www.postgresql.org/d
 - `scripts/Verify-Migrations.ps1`:17 migrations applied from empty disposable PostGIS, including20261026000247_ArchiveFinancialFacts. Repeated with caller environment sentinels: password/connection settings restored correctly. Developer target unchanged. Global dotnet-ef10.0.3 emits a compatibility warning against EF10.0.4; command completes and17-row history verified.
 - Clean source-only export: no .env/.tools/bin/obj/Git data copied. Bootstrap generated independent credentials, built Linux image, started new random-port volumes, explicitly migrated/seeded and reached healthy. `Invoke-Demo.ps1` passed SAR51/create replay/role403/foreign404/capture-accept-dispatch/pickup/delivery/terminal409/ETA. SQL counts:17 migrations,1 Delivered,2 FinancialAuditRecords,2 financial.archive.v1 Inbox rows. Container UID1654, read-only root, healthy. No passwords/tokens/private coordinates printed. Initial EF history probe emits safe DatabaseCommandFailure/EventCode20102; migration success assessed by completion/history, not log absence.
 - Dependency audit: all six projects report no known vulnerable packages from configured sources. This is not a container OS CVE scan.
-- Final diff/security review passed; owned disposable cleanup and final Git state are recorded in the handoff ledger. Source Domain diff empty; original migration hashes3B79630A5CA4D420AF8981720DE31FEA2BE3464929BFF6F5343EAEA475054EE0 /357E7F1EC87B3C03FD52324C3FB33E7DB147FF1857D3B439A764BD19BDE6132E.
+- Final diff/security review passed; the exact-label disposable stack and its two volumes/source export were removed, original OrderFleet/MeetWise resources remained healthy, and final Git state is recorded below. Source Domain diff empty; original migration hashes3B79630A5CA4D420AF8981720DE31FEA2BE3464929BFF6F5343EAEA475054EE0 /357E7F1EC87B3C03FD52324C3FB33E7DB147FF1857D3B439A764BD19BDE6132E.
 
 ## New and updated tests
 
@@ -71,7 +71,7 @@ No unresolved business-policy decision was introduced. No BLOCKER/HIGH remains c
 
 ## Git handoff
 
-Initial commit06868bc; remediation branch phase/13-review-hardening. Final commit/status will be recorded after passing the final gate. Changes are limited to archive/migration, progress/health/metrics/runtime authorization, incident handling, verified scripts/CI/cleanup, regression tests and documentation. No Domain state-machine rewrite, push, merge, rebase, amend or deployment.
+Initial commit06868bc; remediation branch phase/13-review-hardening. Implementation commit: **3372c7a — Remediate financial delivery and worker observability findings**. Git status was verified clean immediately after that commit; this documentation-only follow-up records the hash and cleanup evidence. Use `git log -2 --oneline` for both implementation and evidence commits. Changes are limited to archive/migration, progress/health/metrics/runtime authorization, incident handling, verified scripts/CI/cleanup, regression tests and documentation. No Domain state-machine rewrite, push, merge, rebase, amend or deployment.
 
 
 ## Complete changed-file inventory
