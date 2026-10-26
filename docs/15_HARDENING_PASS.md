@@ -1,6 +1,6 @@
 # Hardening pass — observed evidence (2026-10-26)
 
-Current checkpoint: Gate3 VERIFIED,520 passed (260 Domain+260 Integration),0 failed/skipped; Phase4 documents the result. Phase5 final regression/fresh migration/Compose smoke is pending. Earlier blocked/expected-red checkpoints below are historical evidence and are superseded only by their explicit later reruns. See the acceptance matrix at the end.
+Current checkpoint: Gates0–5 VERIFIED,520 passed (260 Domain+260 Integration),0 failed/skipped. Final strict build, full formatting/analyzers, model drift, fresh19-migration chain and owned Compose HTTP/broker/database smoke passed. Earlier blocked/expected-red checkpoints below are historical evidence and are superseded only by their explicit later reruns. See the final verification ledger and acceptance matrix below. Remote CI remains PENDING REMOTE VERIFICATION.
 
 This pass follows the owner's attached Hardening & Clean-Code prompt. Its branch and commit conventions supersede the older phase conventions for this pass only. Scope is unchanged. Phase 0 started from clean commit 19b010b.
 
@@ -141,7 +141,29 @@ Status at Gate4: done unless an explicit approved alternative/mismatch is named.
 | 4.2 ADR | Done: ADR-027 used because014 already defines monetary rules; no duplicate identifier. |
 | 4.3 docs/matrix | Done: current test matrix, progress/quality/learning records and renamed current references updated. Historical checkpoint evidence retained. |
 | 4.4 changelog | Done: concise hardening entry. |
-| 5 restore/build/format/tests | Pending final execution; Gate3 had520 green and full format0. |
-| 5 drift/migrations | Pending final CLI/fresh chain check; prior drift checks clean and Testcontainers apply19 migrations. |
-| 5 Compose smoke | Pending fresh owned stack; expected health routes are /health/live and /health/ready, not nonexistent /health. |
-| 5 Git/report | Pending final branch/evidence commit; no push/merge/PR/deployment performed. |
+| 5 restore/build/format/tests | Done: restore0; final strict build0 warnings/errors; full format0;520 passed,0 failed/skipped with checked-in Integration collection cap2. |
+| 5 drift/migrations | Done: CLI drift0/no changes; fresh disposable chain applied all19 migrations,17 originals unchanged. |
+| 5 Compose smoke | Done: fresh owned image/project, health/live+ready, migration/seed, public HTTP and delivered/captured journey;24 durable queues/exchange and financial facts inspected. Own services stopped, data retained. |
+| 5 Git/report | Done: hardening/p5-verification local commits and clean working tree; no push/merge/PR/deployment. Remote CI pending. |
+
+## Phase5 final verification ledger
+
+Commands selected workspace SDK10.0.403 via DOTNET_ROOT/PATH. Production source is unchanged since Gate3; Phase5 adds only infrastructure runner metadata and evidence/docs.
+
+| Command | Actual final result |
+|---|---|
+| `dotnet restore OrderFleet.slnx` | exit0 |
+| `dotnet build OrderFleet.slnx -c Release --no-restore -m:1 -warnaserror` | exit0,0 warnings/errors |
+| `dotnet format OrderFleet.slnx --verify-no-changes --no-restore --verbosity quiet` | exit0 |
+| `dotnet test OrderFleet.slnx -c Release --no-build --no-restore -m:1 --logger "console;verbosity=normal" -- xUnit.DiagnosticMessages=true` | exit0:260 Domain+260 Integration,0 failed/skipped; Integration3m49s. Diagnostics confirm20 Domain threads and2 Integration collection threads from checked-in JSON, no command-line concurrency override. |
+| `dotnet ef migrations has-pending-model-changes --project src/OrderFleet.Infrastructure --startup-project src/OrderFleet.Api --configuration Release --no-build` | exit0/no changes, nonconnecting design-only settings; existing10.0.3 CLI/10.0.4 runtime advisory |
+| `./scripts/Verify-Migrations.ps1` | exit0;19 migration history rows in a fresh owned disposable PostGIS database |
+| Owned Compose config/build/up/migrate/seed + HTTP smoke + `./scripts/Invoke-Demo.ps1 -BaseUrl <owned-loopback-port>` | all exit0; readiness, trusted SAR price, replay, authentication/authorization, capture, dispatch, pickup, delivery and ETA verified |
+
+Reproducibility correction: an initial full520 run passed, but two later unrestricted full runs had broker-budget failures (259/260 then258/260 Integration passed). The eight unchanged RabbitDeliveryTests passed in isolation. Removing image-build overlap alone did not resolve the failures. With20 host CPUs and a7.572GiB Docker VM, a diagnostic two-collection full run passed520. Checked in the same bound for Integration only and reran the whole solution successfully as above. Collections still run in parallel; explicit competing sessions, barriers and workers inside tests remain intact. failSkips=true adds enforcement. No assertions, existing timeouts, skips or production policies changed. See [official xUnit configuration](https://xunit.net/docs/config-xunit-runner-json).
+
+Independent diff review covered EfOrderingStore/OrderTransitionEffects, EfRecoveryStore, Identity/composition, lock/candidate SQL, transaction/save ownership, payment compensation, broker ACK/retry classification, GPS privacy/replay and cleanup concurrent eligibility. No further confirmed production defect. Order's Accept-through-end implementation and status/reason enums remain unchanged. Rejected speculative acceptance/recovery/service splits; retained approved IClock and ArgumentException.24 direct package versions and six resolved library graphs unchanged. Only additive20261026115510_ThrottleCourierLocationEvents and20261026122439_IndexPendingCaptureRecovery plus generated snapshot metadata;17 originals unchanged.
+
+Owned smoke project orderfleet-hardening-final-d85cbdb827 used a unique image and ephemeral ports. Broker:24 durable queues and durable topic exchange. SQL:19 migrations,1 delivered order,1 captured payment,3 financial archive facts. Original .env hash unchanged. Only the three new owned containers were stopped; volumes/data retained. Original orderfleet-postgres, meetwise-postgres and meetwise-redis are running healthy/unless-stopped. No further Docker restart, unrelated-project mutation, push, PR, merge or deployment. Local completion does not certify remote CI or production readiness. Remaining documented limitations: single-instance realtime, mock payment provider, heuristic ETA, unbounded replay/Inbox retention pending a separately approved production policy, registration timing and deep OFFSET cost.
+
+Phase branches: hardening/p0-baseline(a811424), p1-safety-net(9b526b4), p2-reliability(2cc37e9), p3-clean-code(68bc64e), p4-documentation(c4194e2), p5-verification(final local evidence commits). The stable post-hygiene baseline432 grew to520 (+88); the initial431 baseline predates its typo regression case. Final working-tree/commit evidence is reported after the local commit. Work stops after this gate.

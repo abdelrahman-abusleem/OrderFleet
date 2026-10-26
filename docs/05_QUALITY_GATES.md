@@ -179,3 +179,9 @@ Groups3A–3D complete under approved exceptions. Full Release solution test run
 ### Hardening Gate4 — VERIFIED
 
 Documentation diff reviewed: README settings/limitations/test paths, ADR-027 (avoids duplicate014), changelog and all-item matrix; current type/method references updated. Local README/ADR links and diff whitespace pass. Strict Release -warnaserror build0 warnings/errors;260 Domain passed. No runtime/schema/package change; final regression, fresh migration and owned Compose smoke remain Gate5 work.
+
+### Hardening Gate5 — VERIFIED
+
+Final restore0, strict Release -warnaserror0 (0 warnings/errors), full formatter/analyzer check0, model drift0/no changes. Full solution520 passed:260 Domain+260 Integration,0 failed/skipped. The final command uses checked-in Integration runner cap2 (diagnostics confirmed); all explicit concurrency/lock/race tests remain enabled. Earlier unrestricted broker-budget failures and diagnostic/isolated reruns are retained in07 and15, not relabeled as green. No assertions, existing timeouts or production algorithms changed to obtain the final result.
+
+Fresh Verify-Migrations.ps1 exit0 with all19 migrations; original17 unchanged and only two approved additive migrations. New owned Compose image/project migration/seed/readiness/public HTTP/full delivered-captured demo passed;24 durable queues/exchange and durable financial facts checked. Original .env unchanged, original three services healthy/unless-stopped; owned smoke services stopped without deleting volumes/data. Final independent production diff review found no further confirmed defect; package versions/resolved graphs unchanged. Documentation matrix complete and local Git clean after final evidence commits. Exact commands/results/limitations in15_HARDENING_PASS.md. No remote push, PR, merge, deployment or remote CI; remote CI PENDING REMOTE VERIFICATION. All requested hardening phases complete; stop here.
