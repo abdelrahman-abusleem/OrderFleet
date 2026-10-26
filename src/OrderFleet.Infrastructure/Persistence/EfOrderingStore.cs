@@ -11,7 +11,8 @@ using OrderFleet.Infrastructure.Messaging;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
-public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrderingStore>? logger = null) : IOrderingStore
+public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrderingStore>? logger = null)
+    : IOrderCreationStore, IOrderTransitionStore, IOrderQueryStore
 {
     public Task<OrderReplay?> FindReplayAsync(Guid actorId, string key, CancellationToken cancellationToken) =>
         context.OrderCreationRequests.AsNoTracking().Where(x => x.ActorId == actorId && x.Key == key)

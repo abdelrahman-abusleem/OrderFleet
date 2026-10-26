@@ -7,7 +7,7 @@ using OrderFleet.Application.Payments;
 
 namespace OrderFleet.Application.Orders;
 
-public sealed class OrderCommands(IOrderingStore store, IRestaurantAccess access, IClock clock,
+public sealed class OrderCommands(IOrderTransitionStore store, IRestaurantAccess access, IClock clock,
     IPaymentStore payments, CaptureOrderPayment capturePayment)
 {
     public async Task AcceptAsync(Guid id, Actor actor, CancellationToken cancellationToken)

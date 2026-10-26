@@ -4,7 +4,7 @@ using OrderFleet.Application.Identity;
 
 namespace OrderFleet.Application.Orders;
 
-public sealed class QueryOrders(IOrderingStore store, IRestaurantAccess access, GetOrder getOrder)
+public sealed class QueryOrders(IOrderQueryStore store, IRestaurantAccess access, GetOrder getOrder)
 {
     public async Task<DeliveryDetails> DeliveryAsync(Guid id, Actor actor, CancellationToken cancellationToken)
     {

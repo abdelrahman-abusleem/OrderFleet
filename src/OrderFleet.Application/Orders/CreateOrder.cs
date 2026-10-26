@@ -12,7 +12,7 @@ using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Application.Orders;
 
-public sealed class CreateOrder(IOrderingStore store, OrderingPolicy policy, IClock clock, IPaymentProvider provider)
+public sealed class CreateOrder(IOrderCreationStore store, OrderingPolicy policy, IClock clock, IPaymentProvider provider)
 {
     public async Task<Guid> ExecuteAsync(Actor actor, CreateOrderRequest request, string? key, CancellationToken cancellationToken)
     {

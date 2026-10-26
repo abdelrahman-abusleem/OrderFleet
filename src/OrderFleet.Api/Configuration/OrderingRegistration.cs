@@ -35,7 +35,10 @@ public static class OrderingRegistration
         });
         services.AddScoped<ICatalogStore, EfCatalogStore>();
         services.AddScoped<IRestaurantAccess, EfCatalogStore>();
-        services.AddScoped<IOrderingStore, EfOrderingStore>();
+        services.AddScoped<EfOrderingStore>();
+        services.AddScoped<IOrderCreationStore>(sp => sp.GetRequiredService<EfOrderingStore>());
+        services.AddScoped<IOrderTransitionStore>(sp => sp.GetRequiredService<EfOrderingStore>());
+        services.AddScoped<IOrderQueryStore>(sp => sp.GetRequiredService<EfOrderingStore>());
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<ManageCatalog>();
         services.AddScoped<BrowseCatalog>();
