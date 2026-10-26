@@ -24,11 +24,14 @@ public static class TelemetryRegistration
 {
     public static void AddOrderTelemetry(this WebApplicationBuilder builder)
     {
-        var logPolicy = new SafeLogPolicy();
         builder.Services.AddSingleton<SafeExceptionListener>();
-        builder.Services.AddSerilog((services, configuration) => configuration.ReadFrom.Services(services).MinimumLevel.Information()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .Enrich.With(logPolicy).Filter.With(logPolicy).WriteTo.Console(new CompactJsonFormatter()), preserveStaticLogger: true);
+        builder.Services.AddSerilog((services, configuration) =>
+        {
+            var output = new LoggerConfiguration().WriteTo.Console(new CompactJsonFormatter());
+            foreach (var sink in services.GetServices<Serilog.Core.ILogEventSink>()) output.WriteTo.Sink(sink);
+            configuration.MinimumLevel.Information().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .WriteTo.Sink(new SafeLogSink(output.CreateLogger()));
+        }, preserveStaticLogger: true);
         builder.Services.AddOptions<TelemetryOptions>().Bind(builder.Configuration.GetSection("Telemetry"))
             .Validate(x => x.Exporter is "Console" or "Otlp" or "None", "Invalid telemetry exporter.")
             .Validate(x => Uri.TryCreate(x.OtlpEndpoint, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"

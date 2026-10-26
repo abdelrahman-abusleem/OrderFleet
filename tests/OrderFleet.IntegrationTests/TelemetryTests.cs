@@ -74,7 +74,7 @@ public sealed class TelemetryTests(PostgresFixture fixture) : IClassFixture<Post
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         await DispatchConcurrencyTests.DispatchAsync(factory, id); // Real financial/state eligibility rejection is instrumented.
         Assert.Equal(HttpStatusCode.Forbidden, (await customer.GetAsync("/api/v1/operations/summary?access_token=" + secret)).StatusCode);
-        await using (var context = fixture.CreateContext())
+        await using (var context = await factory.Services.GetRequiredService<IDbContextFactory<OrderFleet.Infrastructure.Persistence.OrderFleetDbContext>>().CreateDbContextAsync())
             await Assert.ThrowsAsync<Npgsql.PostgresException>(() => context.Database.ExecuteSqlInterpolatedAsync($"SELECT {secret}::integer"));
         factory.Services.GetRequiredService<ILoggerFactory>().CreateLogger("OrderFleet.PrivacyProbe").LogInformation("Password {Password}", secret);
         using (var activity = OrderFleetDiagnostics.Activities.StartActivity("privacy.probe"))
@@ -96,6 +96,8 @@ public sealed class TelemetryTests(PostgresFixture fixture) : IClassFixture<Post
         Assert.DoesNotContain(secret, JsonSerializer.Serialize(traces.Spans));
         Assert.Contains(traces.Spans, x => x.Source == "Npgsql" && x.Status == ActivityStatusCode.Error);
         Assert.Contains(logs.Events, entry => entry.Contains("RoutePattern", StringComparison.Ordinal));
+        Assert.Contains(logs.Events, entry => entry.Contains("\"SourceCategory\":\"Database\"", StringComparison.Ordinal)
+            && entry.Contains("Operational incident", StringComparison.Ordinal) && entry.Contains("EventCode", StringComparison.Ordinal));
         Assert.DoesNotContain(secret, string.Join("\n", logs.Events));
         Assert.Contains("orderfleet.http.requests", metrics.Names);
         Assert.Contains("orderfleet.http.duration", metrics.Names);
@@ -104,6 +106,9 @@ public sealed class TelemetryTests(PostgresFixture fixture) : IClassFixture<Post
         Assert.Contains("orderfleet.dispatch.duration", metrics.Names);
         Assert.Contains("orderfleet.outbox.pending", metrics.Names);
         Assert.Contains("orderfleet.outbox.oldest_lag", metrics.Names);
+        Assert.Contains("orderfleet.worker.progress_age", metrics.Names);
+        Assert.Contains("orderfleet.worker.ready", metrics.Names);
+        Assert.Contains("orderfleet.recovery.pending", metrics.Names);
         await using var verify = fixture.CreateContext();
         var fact = await verify.OutboxMessages.SingleAsync(x => x.AggregateId == id && x.Type == "order.created.v1");
         Assert.True(ActivityContext.TryParse(fact.TraceParent, null, out var original));

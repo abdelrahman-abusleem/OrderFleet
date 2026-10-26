@@ -48,7 +48,7 @@ builder.Services.AddDispatch(builder.Configuration);
 builder.Services.AddRecovery(builder.Configuration);
 builder.Services.AddEta(builder.Configuration);
 builder.Services.AddOrderRealtime();
-builder.Services.AddOperations();
+builder.Services.AddOperations(builder.Configuration);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Warning);
 builder.Services.ConfigureHttpJsonOptions(options =>

@@ -21,6 +21,8 @@ public static class MessagingRegistration
         services.AddSingleton<RabbitDeliveryProcessor>();
         services.AddSingleton<RabbitConsumer>();
         services.AddScoped<CancelledPaymentEventHandler>();
+        services.AddScoped<IFinancialArchive, OrderFleet.Infrastructure.Persistence.EfFinancialArchive>();
+        services.AddScoped<ArchiveFinancialEvent>();
         services.AddHostedService<MessagingWorker>();
     }
 }

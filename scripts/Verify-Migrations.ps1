@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $migrationDotnet = 'dotnet'
 $migrationPreviousRoot = $env:DOTNET_ROOT
 $migrationPreviousPath = $env:PATH
+$migrationPreviousPassword = $env:POSTGRES_PASSWORD
+$migrationPreviousConnection = $env:ConnectionStrings__OrderFleet
 $migrationLocalSdk = Join-Path $PSScriptRoot '../.tools/dotnet'
 if (Test-Path (Join-Path $migrationLocalSdk 'dotnet.exe')) {
     $env:DOTNET_ROOT = (Resolve-Path $migrationLocalSdk).Path
@@ -34,7 +36,10 @@ try {
 }
 finally {
     docker stop $migrationContainer | Out-Null
-    Remove-Item Env:POSTGRES_PASSWORD,Env:ConnectionStrings__OrderFleet -ErrorAction SilentlyContinue
+    if ($null -eq $migrationPreviousPassword) { Remove-Item Env:POSTGRES_PASSWORD -ErrorAction SilentlyContinue }
+    else { $env:POSTGRES_PASSWORD = $migrationPreviousPassword }
+    if ($null -eq $migrationPreviousConnection) { Remove-Item Env:ConnectionStrings__OrderFleet -ErrorAction SilentlyContinue }
+    else { $env:ConnectionStrings__OrderFleet = $migrationPreviousConnection }
     $env:DOTNET_ROOT = $migrationPreviousRoot
     $env:PATH = $migrationPreviousPath
 }

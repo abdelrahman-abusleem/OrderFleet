@@ -1,7 +1,7 @@
 namespace OrderFleet.Application.Operations;
 
 public sealed record OperationsSummary(long OutboxPending, long OutboxDead, double OldestOutboxLagSeconds,
-    long DispatchPending, long DispatchExhausted, long UncertainPayments, long UnsettledCancellations, long RecoveryDead);
+    long DispatchPending, long DispatchExhausted, long UncertainPayments, long UnsettledCancellations, long RecoveryDead, long RecoveryPending = 0);
 public sealed record OutboxDiagnostic(Guid Id, string Type, DateTimeOffset OccurredAtUtc, int Attempts,
     DateTimeOffset NextAttemptAtUtc, DateTimeOffset? DeadLetteredAtUtc, string? LastErrorCode);
 public sealed record RecoveryDiagnostic(string Operation, Guid ResourceId, int Attempts, DateTimeOffset NextAttemptAtUtc,

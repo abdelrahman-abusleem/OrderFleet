@@ -75,3 +75,5 @@
 ## Source quality checklist
 
 When making a contested technical choice: include link, relevant version/date, exact implication to OrderFleet, alternatives, impact on testability and how code/tests confirm correctness. Books are conceptual references only; online official docs take precedence for current API exactness.
+
+Review reference: PostgreSQL17 monitoring statistics snapshots are transaction-scoped; use a separate autocommit observer or explicitly refresh the snapshot when writing live contention witnesses: https://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-STATS-VIEWS . DispatchContentionTests demonstrates the applied boundary.

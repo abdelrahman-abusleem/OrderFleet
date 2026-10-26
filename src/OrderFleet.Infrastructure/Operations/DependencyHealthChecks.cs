@@ -40,9 +40,9 @@ public sealed class BrokerHealthCheck(IOptions<RabbitOptions> options) : IHealth
     }
 }
 
-public sealed class WorkersHealthCheck(IOptions<RabbitOptions> messaging, IOptions<RecoveryOptions> recovery) : IHealthCheck
+public sealed class WorkersHealthCheck(IOptions<RabbitOptions> messaging, IOptions<RecoveryOptions> recovery, WorkerProgress workers) : IHealthCheck
 {
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default) =>
-        Task.FromResult(messaging.Value.Enabled && recovery.Value.Enabled ? HealthCheckResult.Healthy()
+        Task.FromResult(messaging.Value.Enabled && recovery.Value.Enabled && workers.Snapshot().All(x => x.Ready) ? HealthCheckResult.Healthy()
             : HealthCheckResult.Unhealthy("Required processing paused."));
 }

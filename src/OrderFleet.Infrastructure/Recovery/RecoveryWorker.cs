@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrderFleet.Application.Recovery;
+using OrderFleet.Infrastructure.Operations;
 
 namespace OrderFleet.Infrastructure.Recovery;
 
@@ -16,24 +17,31 @@ public sealed class RecoveryOptions
 }
 
 public sealed class RecoveryWorker(IServiceScopeFactory scopes, IOptions<RecoveryOptions> options,
-    ILogger<RecoveryWorker> logger) : BackgroundService
+    ILogger<RecoveryWorker> logger, WorkerProgress progress) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!options.Value.Enabled) return;
+        if (!options.Value.Enabled) { progress.Disable("recovery"); return; }
+        progress.Begin("recovery");
         var failureCount = 0;
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                using var scope = scopes.CreateScope();
-                await scope.ServiceProvider.GetRequiredService<RecoverOrderFleet>().ExecuteAsync(stoppingToken);
-                failureCount = 0;
+                try
+                {
+                    using var scope = scopes.CreateScope();
+                    progress.BeginWork("recovery");
+                    await scope.ServiceProvider.GetRequiredService<RecoverOrderFleet>().ExecuteAsync(stoppingToken);
+                    progress.Success("recovery");
+                    failureCount = 0;
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+                catch (Exception error) { progress.Failure("recovery"); failureCount++; logger.LogWarning("Recovery sweep failed {FailureType}", error.GetType().Name); }
+                var delay = failureCount == 0 ? options.Value.PollMilliseconds : Math.Min(30000, 1000 * Math.Pow(2, Math.Min(5, failureCount)));
+                await Task.Delay(TimeSpan.FromMilliseconds(delay), stoppingToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception error) { failureCount++; logger.LogWarning("Recovery sweep failed {FailureType}", error.GetType().Name); }
-            var delay = failureCount == 0 ? options.Value.PollMilliseconds : Math.Min(30000, 1000 * Math.Pow(2, Math.Min(5, failureCount)));
-            await Task.Delay(TimeSpan.FromMilliseconds(delay), stoppingToken);
         }
+        finally { progress.Stop("recovery"); }
     }
 }

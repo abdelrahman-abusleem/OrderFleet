@@ -6,8 +6,10 @@ using OrderFleet.Application.Recovery;
 
 namespace OrderFleet.Application.Operations;
 
-public sealed class OperateOrderFleet(IOperationsStore store, IClock clock)
+public sealed class OperateOrderFleet(IOperationsStore store, IClock clock, IRuntimeDiagnostics runtime)
 {
+    public async Task<RuntimeDiagnostic> RuntimeAsync(Actor actor, CancellationToken ct)
+    { await RequireAdminAsync(actor, ct); return runtime.Snapshot(); }
     public async Task<OperationsSummary> SummaryAsync(Actor actor, CancellationToken ct)
     { await RequireAdminAsync(actor, ct); return await store.SummaryAsync(clock.UtcNow, ct); }
 

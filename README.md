@@ -39,9 +39,9 @@ SDK analyzers run with warnings treated as errors. Integration tests need a reac
 - Catalog snapshots, decimal SAR pricing, complete established Order state/cancellation matrix and assignment fences.
 - Idempotent create/payment effects, capture-before-acceptance, permanent/transient/unknown outcome handling and refund/void compensation.
 - Real PostGIS radius/freshness queries and atomic courier capacity claims, xmin concurrency and unique active-assignment constraints.
-- Transactional Outbox, leased publication, publisher confirms, manual ACK, Inbox dedupe, bounded retry/dead letters and persisted timeout/recovery processing.
+- Transactional Outbox, leased publication, publisher confirms, manual ACK, Inbox dedupe, automatic typed financial archive, bounded retry/dead letters and persisted timeout/recovery processing.
 - Private SignalR subscriptions, live authority checks, reconnect snapshots, GPS freshness/throttling and explicitly approximate ETA.
-- Safe Serilog, W3C/OpenTelemetry HTTP/DB/message/dispatch traces and metrics, bounded readiness probes and audited administrator replay.
+- Safe Serilog, W3C/OpenTelemetry HTTP/DB/message/dispatch traces and metrics, measured worker-progress readiness, broker backlog diagnostics and audited administrator replay.
 
 ## Operational boundaries
 
@@ -59,4 +59,4 @@ For a fresh demo, use a new `-ProjectName orderfleet-yourname` and free ports; r
 
 Repository agreement: [AGENTS.md](AGENTS.md), [navigation](docs/00_START_HERE.md), [architecture](docs/02_ARCHITECTURE.md), [ADRs](docs/08_DECISION_LOG.md), [quality gates](docs/05_QUALITY_GATES.md).
 
-Latest final local result (2026-10-26): **402 passed,0 failed,0 skipped** —257 Domain and145 Integration. Strict Release build and whitespace check pass;16 migrations and clean-source Docker bootstrap/demo verified. Human review and remote CI remain external/unverified.
+Latest hardening result (2026-10-26): **428 passed,0 failed,0 skipped** —257 Domain and171 Integration. Strict Release build, standalone analyzers and whitespace check pass;17 migrations and clean-source Docker bootstrap/demo verified. F-01..F-05 fixes, additional audit findings and exact evidence are in [the hardening report](docs/14_HARDENING_REVIEW.md). Remote CI is **PENDING REMOTE VERIFICATION**; human owner merge/deploy review remains external.

@@ -191,3 +191,9 @@ Liveness proves process response; readiness additionally checks dependency/schem
 ## Executable local walkthrough
 
 Read [13_DELIVERY_GUIDE.md](13_DELIVERY_GUIDE.md) after the contracts. It includes actual seed/login/create/assignment calls, architecture/sequence/data diagrams, failure mapping to named tests, operator replay, private telemetry, retention and patching boundaries. Bootstrap and Invoke-Demo are executable counterparts. ArchitectureTests replaces the historical empty integration placeholder. EndToEndJourneyTests follows capture/dispatch through a full host restart and broker-to-SignalR delivery with durable DB assertions.
+
+## Studying the independent-review fixes
+
+Start with docs/14_HARDENING_REVIEW.md. Follow ArchiveFinancialEvent → EfFinancialArchive → FinancialAuditRecords/Inbox, then RabbitConsumer manual ACK and retry/DLQ behavior. FinancialArchiveTests deliberately omits ACK after commit and verifies redelivery does not duplicate audit. Read WorkerProgress with its fake monotonic clock tests: empty queues differ from stuck handlers, and a new failure attempt must not renew failure grace. WorkerRuntimeTests uses actual broker stop/restart and idle AMQP probes.
+
+SafeLogSink separates diagnostic metadata from private event content before any exporter; unknown incidents retain controlled categories/type/event-code/trace. SafeIncidentTests and TelemetryTests prove unexpected errors remain visible while raw messages, SQL values, tokens and private markers stay out. DispatchContentionTests queries pg_stat_activity to witness two real blocked sessions before releasing the test-only lock; Task.WhenAll alone cannot prove overlap.

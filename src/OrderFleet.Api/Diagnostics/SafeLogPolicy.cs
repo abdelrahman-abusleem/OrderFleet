@@ -4,7 +4,7 @@ using Serilog.Events;
 
 namespace OrderFleet.Api.Diagnostics;
 
-public sealed class SafeLogPolicy : ILogEventFilter, ILogEventEnricher
+public sealed class SafeLogPolicy : ILogEventEnricher
 {
     private static readonly HashSet<string> Templates =
     [
@@ -14,18 +14,19 @@ public sealed class SafeLogPolicy : ILogEventFilter, ILogEventEnricher
         "Unhandled request failure {FailureType}; trace {TraceId}", "Request failed with {FailureType}; trace {TraceId}",
         "Outbox lease expired for {MessageId}", "Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}",
         "Outbox worker unavailable {FailureType}", "{Consumer} consumer unavailable {FailureType}",
-        "Operational metrics unavailable {FailureType}"
+        "Operational metrics unavailable {FailureType}",
+        "Consumer {Consumer} failed {MessageId} {FailureCode} attempt {Attempt}"
     ];
     private static readonly HashSet<string> Properties =
     [
         "SourceContext", "TraceId", "SpanId", "ActorId", "OrderId", "MessageId", "FailureType", "FailureCode", "Attempt",
-        "Consumer", "RequestMethod", "RoutePattern", "StatusCode", "ElapsedMilliseconds"
+        "Consumer", "RequestMethod", "RoutePattern", "StatusCode", "ElapsedMilliseconds", "FailureCategory", "SourceCategory", "EventCode"
     ];
-    public bool IsEnabled(LogEvent logEvent)
+    public bool IsApproved(LogEvent logEvent)
     {
         // Framework exception/SQL/request dumps are not an approved telemetry
         // contract. Our boundary logs record controlled codes/types instead.
-        if (logEvent.Exception is not null || !Templates.Contains(logEvent.MessageTemplate.Text)) return false;
+        if (!Templates.Contains(logEvent.MessageTemplate.Text)) return false;
         if (!logEvent.Properties.TryGetValue("SourceContext", out var property) || property is not ScalarValue { Value: string source }) return false;
         return source.StartsWith("OrderFleet", StringComparison.Ordinal) || source == "OrderAccessAudit" || source == "Microsoft.Hosting.Lifetime";
     }

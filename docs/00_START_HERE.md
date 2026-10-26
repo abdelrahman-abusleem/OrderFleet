@@ -55,3 +55,5 @@ A feature is COMPLETE only when its business acceptance behavior exists, real ap
 **Phase 0 audit, then Phase 1.5** (owner-approved Order additions, ADR-013), **then Phase 2A:** inspect and verify existing EF Core persistence/migrations and build a real Testcontainers/PostgreSQL save-and-reload test for the `Order` aggregate (plus a minimal CI workflow and README skeleton). Then Phase 2B database concurrency and all remaining required phases. **After each verified phase gate, record the results and continue automatically without waiting for the owner's "go"; do not remove or skip roadmap features.**
 
 14. `13_DELIVERY_GUIDE.md` — implemented runtime walkthrough, diagrams, operations and known limitations (read alongside the specifications and current verification ledger).
+
+15. `14_HARDENING_REVIEW.md` — final remediation/audit findings, exact verification, new tests and remote CI instructions.

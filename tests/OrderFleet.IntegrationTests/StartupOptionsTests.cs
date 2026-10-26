@@ -6,6 +6,10 @@ namespace OrderFleet.IntegrationTests;
 public sealed class StartupOptionsTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
     [Theory]
+    [InlineData("WorkerHealth:StartupGraceSeconds", "0")]
+    [InlineData("WorkerHealth:StallSeconds", "0")]
+    [InlineData("WorkerHealth:FailureGraceSeconds", "0")]
+    [InlineData("WorkerHealth:ProbeSeconds", "0")]
     [InlineData("Telemetry:Exporter", "Unknown")]
     [InlineData("Telemetry:MetricIntervalMilliseconds", "0")]
     [InlineData("Telemetry:TraceSamplingRatio", "2")]

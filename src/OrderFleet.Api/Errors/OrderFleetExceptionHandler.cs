@@ -28,11 +28,11 @@ public sealed class OrderFleetExceptionHandler(
         if (status == 0)
         {
             logger.LogError("Unhandled request failure {FailureType}; trace {TraceId}", exception.GetType().Name, context.TraceIdentifier);
-            return false;
+            status = StatusCodes.Status500InternalServerError;
         }
 
-        logger.LogWarning("Request failed with {FailureType}; trace {TraceId}",
-            exception.GetType().Name, context.TraceIdentifier);
+        if (status == 503) logger.LogWarning("Request failed with {FailureType}; trace {TraceId}", exception.GetType().Name, context.TraceIdentifier);
+        else if (status < 500) logger.LogDebug("Request failed with {FailureType}; trace {TraceId}", exception.GetType().Name, context.TraceIdentifier);
         context.Response.StatusCode = status;
         var problem = new ProblemDetails
         {
@@ -45,6 +45,7 @@ public sealed class OrderFleetExceptionHandler(
                 402 => "Payment authorization declined.",
                 503 when exception is ProviderOutcomeUnknownException => "Payment outcome is being reconciled.",
                 503 => "A required dependency is temporarily unavailable.",
+                500 => "An unexpected error occurred.",
                 _ => "Invalid request."
             },
             Detail = exception is RequestValidationException ? exception.Message : null

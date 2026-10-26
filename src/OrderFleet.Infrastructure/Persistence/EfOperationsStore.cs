@@ -26,7 +26,8 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
             await context.Payments.LongCountAsync(x => x.State == PaymentState.PendingReconciliation, ct),
             await context.Payments.LongCountAsync(x => x.State != PaymentState.Voided && x.State != PaymentState.Refunded
                 && context.Orders.Any(o => o.Id == x.OrderId && o.Status == OrderStatus.Cancelled), ct),
-            await context.RecoveryWorkFailures.LongCountAsync(x => x.ResolvedAtUtc == null && x.DeadLetteredAtUtc != null, ct));
+            await context.RecoveryWorkFailures.LongCountAsync(x => x.ResolvedAtUtc == null && x.DeadLetteredAtUtc != null, ct),
+            await context.RecoveryWorkFailures.LongCountAsync(x => x.ResolvedAtUtc == null && x.DeadLetteredAtUtc == null, ct));
     }
 
     public async Task<IReadOnlyList<OutboxDiagnostic>> OutboxAsync(string state, int offset, int count, CancellationToken ct) =>

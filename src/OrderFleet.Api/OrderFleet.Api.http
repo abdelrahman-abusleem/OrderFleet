@@ -1,6 +1,14 @@
-@OrderFleet.Api_HostAddress = http://localhost:5125
+@OrderFleet.Api_HostAddress = http://127.0.0.1:8080
 
-GET {{OrderFleet.Api_HostAddress}}/weatherforecast/
+GET {{OrderFleet.Api_HostAddress}}/health/ready
 Accept: application/json
 
 ###
+
+GET {{OrderFleet.Api_HostAddress}}/api/v1/restaurants
+Accept: application/json
+
+###
+
+# Authenticated order journey: scripts/Invoke-Demo.ps1 and docs/13_DELIVERY_GUIDE.md.
+# Keep local passwords and bearer tokens outside tracked HTTP files.

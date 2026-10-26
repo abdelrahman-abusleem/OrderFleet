@@ -11,6 +11,8 @@ public static class OperationsEndpoints
     public static void MapOperationsEndpoints(this WebApplication app)
     {
         var operations = app.MapGroup("/api/v1/operations").RequireAuthorization(policy => policy.RequireRole(OrderFleetRoles.Admin));
+        operations.MapGet("/runtime", async (ClaimsPrincipal principal, OperateOrderFleet query, CancellationToken ct) =>
+            Results.Ok(await query.RuntimeAsync(principal.ToActor(), ct)));
         operations.MapGet("/summary", async (ClaimsPrincipal principal, OperateOrderFleet query, CancellationToken ct) =>
             Results.Ok(await query.SummaryAsync(principal.ToActor(), ct)));
         operations.MapGet("/outbox", async (string? state, int? page, int? pageSize, ClaimsPrincipal principal,

@@ -107,3 +107,9 @@ Application command -> Domain transition + Outbox event (same PostgreSQL transac
 ## Implemented runtime navigation (2026-10-26)
 
 The concrete boundaries, complete order sequence, logical data model and failure-mode matrix are in [13_DELIVERY_GUIDE.md](13_DELIVERY_GUIDE.md). Actual source retains the four existing projects; no extra service/project layer was introduced. ArchitectureTests verifies Domain/Application assembly references exclude infrastructure/transport. API composition and Development bootstrap may reference infrastructure; HTTP business handlers delegate to Application. DB technical claims/leases and projections live in Infrastructure; Domain transition methods remain the authority.
+
+## Review hardening — financial facts and operational supervision
+
+Financial integration facts now have an automatic consumer: Application ArchiveFinancialEvent validates a minimal typed history fact; Infrastructure EfFinancialArchive inserts immutable FinancialAuditRecords and financial.archive.v1 Inbox in one transaction; transport ACK follows commit. This does not alter Payment or Order. Provider ledger/payment remain financial authority. No new projects, external broker framework or Domain dependency. Passive broker observations and monotonic WorkerProgress are explicitly Infrastructure operational state, never business-state substitutes. Application defines bounded runtime diagnostic DTO/port; live Admin authorization precedes reads.
+
+SafeLogSink is the privacy boundary before every configured log exporter: approved contracts remain structured; unknown warnings/errors become fixed safe incidents with type/category/event-code/trace rather than raw templates/exceptions or silence. HTTP error handling owns its incident record; consumer supervisor owns escaped callback failure. ADR-026 and the hardening report document alternatives, tests and limitations.

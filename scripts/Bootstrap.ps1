@@ -30,7 +30,7 @@ try {
         docker compose --project-name $ProjectName --profile app build api
         if ($LASTEXITCODE -ne 0) { throw 'API build failed.' }
     }
-    docker compose --project-name $ProjectName --profile app up -d --wait postgis rabbitmq
+    docker compose --project-name $ProjectName --profile app up -d --wait --wait-timeout 120 postgis rabbitmq
     if ($LASTEXITCODE -ne 0) { throw 'Dependency readiness failed.' }
     docker compose --project-name $ProjectName --profile app stop api
     if ($LASTEXITCODE -ne 0) { throw 'Could not stop API before explicit migration.' }
@@ -38,7 +38,7 @@ try {
         docker compose --project-name $ProjectName --profile app run --rm --no-deps api $operation
         if ($LASTEXITCODE -ne 0) { throw "Explicit $operation failed. Existing data and credentials were preserved." }
     }
-    docker compose --project-name $ProjectName --profile app up -d --no-deps --wait api
+    docker compose --project-name $ProjectName --profile app up -d --no-deps --wait --wait-timeout 120 api
     if ($LASTEXITCODE -ne 0) { throw 'API readiness failed.' }
     $address = (docker compose --project-name $ProjectName --profile app port api 8080).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Could not discover API port.' }

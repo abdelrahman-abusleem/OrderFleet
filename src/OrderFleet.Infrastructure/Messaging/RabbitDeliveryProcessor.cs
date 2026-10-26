@@ -3,10 +3,11 @@ using RabbitMQ.Client;
 using System.Diagnostics;
 using System.Text;
 using OrderFleet.Application.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
-public sealed class RabbitDeliveryProcessor
+public sealed class RabbitDeliveryProcessor(ILogger<RabbitDeliveryProcessor>? logger = null)
 {
     public async Task ProcessAsync(IChannel channel, string queue, ulong deliveryTag, IReadOnlyBasicProperties properties,
         ReadOnlyMemory<byte> body, IIntegrationEventHandler handler, CancellationToken ct)
@@ -31,6 +32,8 @@ public sealed class RabbitDeliveryProcessor
         {
             permanent = error is InvalidDataException or System.Text.Json.JsonException;
             failure = permanent ? "InvalidEnvelope" : "ProcessingFailed";
+            activity?.SetStatus(ActivityStatusCode.Error);
+            activity?.SetTag("error.type", failure);
         }
         if (failure is not null)
         {
@@ -39,6 +42,12 @@ public sealed class RabbitDeliveryProcessor
                 ? RabbitTopology.Dead(queue) : RabbitTopology.Retry(queue, attempt + 1);
             if (target == RabbitTopology.Dead(queue)) OrderFleetDiagnostics.ConsumerDeadLetters.Add(1);
             else OrderFleetDiagnostics.ConsumerRetries.Add(1);
+            var consumer = queue.EndsWith(".financial.v1", StringComparison.Ordinal) ? "financial"
+                : queue.EndsWith(".dispatch.v1", StringComparison.Ordinal) ? "dispatch"
+                : queue.EndsWith(".realtime.v1", StringComparison.Ordinal) ? "realtime" : "payments";
+            var messageId = Guid.TryParse(properties.MessageId, out var parsed) ? parsed : Guid.Empty;
+            logger?.Log(target == RabbitTopology.Dead(queue) ? LogLevel.Error : LogLevel.Warning,
+                "Consumer {Consumer} failed {MessageId} {FailureCode} attempt {Attempt}", consumer, messageId, failure, attempt + 1);
             var retry = new BasicProperties
             {
                 Persistent = true,

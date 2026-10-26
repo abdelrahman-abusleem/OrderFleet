@@ -74,3 +74,11 @@ For retryable mutating operations (e.g., order creation, mock payment capture/re
 - Demo JWT setup not a substitute for production identity governance.
 - Dev secrets are local; tracked `compose.yaml` should be sanitized for publicly released portfolio, with `.env.example` placeholders and setup instructions.
 - Operational maturity must be described as **production-oriented**; don't imply audited enterprise production-readiness.
+
+## Observed hardening controls (2026-10-26)
+
+Do not equate enabled worker configuration with health: monotonic progress/lifecycle and independently verified idle connections now feed readiness. Busy processing suppresses idle heartbeat, persistent failures keep their original grace origin, and dead/backlog alerts remain independent of readiness to avoid poison restart loops. Public health is generic; live Admin runtime diagnostics are bounded and omit URI/payload/exception details.
+
+Financial archive+Inbox is atomic before ACK. Schema/type/state/identity/money/currency checks precede archival; conflicting message identity is rejected, historical order/state sequence is not reapplied. Retained DLQ facts require controlled confirmed replay, not a new payment effect. Broker ready-message metrics exclude unacked deliveries and include sample timestamps in runtime diagnostics.
+
+SafeLogSink normalizes unknown Warning/Error incidents rather than suppressing all exceptions or exporting unrestricted data. SafeExceptionListener/ActivityProcessor still protect immutable trace events and SQL/baggage. Real HTTP/EF/Rabbit tests assert diagnostic visibility, correlation and private marker exclusion.

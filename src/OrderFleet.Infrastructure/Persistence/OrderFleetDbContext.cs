@@ -39,6 +39,7 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<PaymentCaptureAttempt> PaymentCaptureAttempts => Set<PaymentCaptureAttempt>();
+    public DbSet<FinancialAuditRecord> FinancialAuditRecords => Set<FinancialAuditRecord>();
     public DbSet<Courier> Couriers => Set<Courier>();
     public DbSet<CourierPosition> CourierPositions => Set<CourierPosition>();
     public DbSet<DispatchJob> DispatchJobs => Set<DispatchJob>();

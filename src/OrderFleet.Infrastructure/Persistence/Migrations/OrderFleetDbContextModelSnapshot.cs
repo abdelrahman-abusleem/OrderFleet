@@ -904,6 +904,60 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("OrderFleet.Infrastructure.Payments.FinancialAuditRecord", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTimeOffset>("ArchivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AuthorizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PaymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("OrderId", "OccurredAtUtc");
+
+                    b.ToTable("FinancialAuditRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FinancialAudit_Amount", "\"Amount\" > 0 AND \"Amount\" <= 79228162514264337593543950335 AND round(\"Amount\",2) = \"Amount\"");
+
+                            t.HasCheckConstraint("CK_FinancialAudit_Currency", "\"Currency\" = 'SAR'");
+                        });
+                });
+
             modelBuilder.Entity("OrderFleet.Infrastructure.Payments.MockPaymentAuthorization", b =>
                 {
                     b.Property<Guid>("Id")

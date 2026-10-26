@@ -44,7 +44,9 @@ public static class EventEnvelopeCodec
             throw new InvalidDataException("Invalid event envelope.");
         using var payload = JsonDocument.Parse(message.PayloadJson, new JsonDocumentOptions { MaxDepth = 8 });
         var identity = message.Type == "courier.location-updated.v1" ? "courierId" : "orderId";
-        if (!payload.RootElement.TryGetProperty(identity, out var order) || !order.TryGetGuid(out var id) || id != message.AggregateId
+        if (payload.RootElement.ValueKind != JsonValueKind.Object
+            || !payload.RootElement.TryGetProperty(identity, out var order) || order.ValueKind != JsonValueKind.String
+            || !order.TryGetGuid(out var id) || id != message.AggregateId
             || payload.RootElement.TryGetProperty("latitude", out _) || payload.RootElement.TryGetProperty("longitude", out _))
             throw new InvalidDataException("Invalid event payload.");
     }

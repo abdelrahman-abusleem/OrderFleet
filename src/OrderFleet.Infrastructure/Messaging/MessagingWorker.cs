@@ -1,43 +1,65 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OrderFleet.Infrastructure.Operations;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
 public sealed class MessagingWorker(OutboxRelay relay, RabbitConsumer consumer, IOptions<RabbitOptions> options,
-    ILogger<MessagingWorker> logger) : BackgroundService
+    ILogger<MessagingWorker> logger, WorkerProgress progress) : BackgroundService
 {
-    protected override Task ExecuteAsync(CancellationToken stoppingToken) => options.Value.Enabled
-        ? Task.WhenAll(PublishLoopAsync(stoppingToken), ConsumeLoopAsync(consumer.RunPaymentsAsync, "Payment", stoppingToken),
-            ConsumeLoopAsync(consumer.RunDispatchAsync, "Dispatch", stoppingToken),
-            ConsumeLoopAsync(consumer.RunRealtimeAsync, "Realtime", stoppingToken)) : Task.CompletedTask;
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (!options.Value.Enabled)
+        {
+            foreach (var name in new[] { "outbox", "payments", "dispatch", "realtime", "financial" }) progress.Disable(name);
+            return Task.CompletedTask;
+        }
+        return Task.WhenAll(PublishLoopAsync(stoppingToken), ConsumeLoopAsync(consumer.RunPaymentsAsync, "payments", stoppingToken),
+            ConsumeLoopAsync(consumer.RunDispatchAsync, "dispatch", stoppingToken),
+            ConsumeLoopAsync(consumer.RunRealtimeAsync, "realtime", stoppingToken),
+            ConsumeLoopAsync(consumer.RunFinancialAsync, "financial", stoppingToken));
+    }
 
     private async Task PublishLoopAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        progress.Begin("outbox");
+        try
         {
-            try
+            while (!ct.IsCancellationRequested)
             {
-                var count = await relay.RunBatchAsync(ct);
-                if (count == 0) await Task.Delay(options.Value.PollMilliseconds, ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
-            catch (Exception error)
-            {
-                logger.LogWarning("Outbox worker unavailable {FailureType}", error.GetType().Name);
-                await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                try
+                {
+                    progress.BeginWork("outbox");
+                    var count = await relay.RunBatchAsync(ct);
+                    progress.Success("outbox");
+                    if (count == 0) await Task.Delay(options.Value.PollMilliseconds, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+                catch (Exception error)
+                {
+                    progress.Failure("outbox");
+                    logger.LogWarning("Outbox worker unavailable {FailureType}", error.GetType().Name);
+                    await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                }
             }
         }
+        finally { progress.Stop("outbox"); }
     }
 
     private async Task ConsumeLoopAsync(Func<CancellationToken, Task> run, string consumerName, CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        progress.Begin(consumerName);
+        try
         {
-            try { await run(ct); }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
-            catch (Exception error) { logger.LogWarning("{Consumer} consumer unavailable {FailureType}", consumerName, error.GetType().Name); }
-            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+            while (!ct.IsCancellationRequested)
+            {
+                try { await run(ct); throw new IOException("Consumer terminated unexpectedly."); }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+                catch (Exception error) { progress.Failure(consumerName); logger.LogWarning("{Consumer} consumer unavailable {FailureType}", consumerName, error.GetType().Name); }
+                await Task.Delay(TimeSpan.FromSeconds(5), ct);
+            }
         }
+        finally { progress.Stop(consumerName); }
     }
 }

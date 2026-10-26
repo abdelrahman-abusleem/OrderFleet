@@ -8,8 +8,14 @@ namespace OrderFleet.Api.Configuration;
 
 public static class OperationsRegistration
 {
-    public static void AddOperations(this IServiceCollection services)
+    public static void AddOperations(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<WorkerHealthOptions>().Bind(configuration.GetSection("WorkerHealth"))
+            .Validate(x => x.StartupGraceSeconds is >= 15 and <= 300 && x.StallSeconds is >= 60 and <= 600
+                && x.FailureGraceSeconds is >= 5 and <= 120 && x.ProbeSeconds is >= 1 and <= 15, "Invalid worker health thresholds.").ValidateOnStart();
+        services.AddSingleton<WorkerProgress>();
+        services.AddSingleton<BrokerQueueObserver>();
+        services.AddSingleton<IRuntimeDiagnostics, RuntimeDiagnostics>();
         services.AddScoped<IOperationsStore, EfOperationsStore>();
         services.AddScoped<OperateOrderFleet>();
         services.AddSingleton<OperationalMetrics>();
