@@ -12,6 +12,17 @@ namespace OrderFleet.IntegrationTests;
 public sealed class OperationsApiTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
     [Fact]
+    public async Task MissingIdempotencyKey_ExplainsMaximumLength()
+    {
+        await using var factory = new ApiFactory(fixture);
+        using var admin = await ClientAsync(factory, "Admin");
+        var response = await admin.PostAsync($"/api/v1/operations/outbox/{Guid.NewGuid()}/retry", null);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("An Idempotency-Key of at most 100 characters is required.", problem.GetProperty("detail").GetString());
+    }
+
+    [Fact]
     public async Task DatabaseOutage_DoesNotBreakLiveness_AndReadinessFailsWithinBound()
     {
         await using var factory = new ApiFactory(fixture);

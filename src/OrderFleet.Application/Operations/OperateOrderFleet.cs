@@ -44,6 +44,6 @@ public sealed class OperateOrderFleet(IOperationsStore store, IClock clock, IRun
     private static void ValidateKey(string? key)
     {
         if (string.IsNullOrWhiteSpace(key) || key.Length > 100 || key.Any(char.IsControl))
-            throw new RequestValidationException("An Idempotency-Key of at most100 characters is required.");
+            throw new RequestValidationException("An Idempotency-Key of at most 100 characters is required.");
     }
 }
