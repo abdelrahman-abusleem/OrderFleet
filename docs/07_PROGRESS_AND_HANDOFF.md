@@ -355,3 +355,7 @@ Nine HTTP/configuration tests were written first:6 failed/3 passed, proving abse
 ### Phase2 item2.9 — concrete realtime scale-out boundary
 
 Reviewed OrderConnections and the current queue/notification contract. Existing README/ADR-022 already state single-instance realtime; added the concrete Redis/equivalent upgrade path, negotiated-transport affinity, and registry/fanout requirement with multi-replica security/recovery acceptance. A backplane alone cannot distribute local authorization/subscription state or turn a competing realtime queue into broadcast. Documentation only; no service, package, behavior, schema or test change. Existing realtime tests remain required in the upcoming full gate.
+
+### Phase2 item2.10 — registration timing tradeoff
+
+Inspected IdentityAccounts.RegisterAsync duplicate/result/unique-conflict branches. Added the requested accepted-tradeoff note: generic Accepted avoids direct enumeration, but differing role/commit work can expose a timing signal. No constant-time or measurement claim; rate limits do not eliminate the issue. Documentation only, no identity/payment/business algorithm change. Existing Identity HTTP regressions passed in the40-case proxy group; full gate still required.
