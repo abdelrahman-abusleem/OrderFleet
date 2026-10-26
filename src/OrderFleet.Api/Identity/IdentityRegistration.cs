@@ -28,7 +28,6 @@ public static class IdentityRegistration
         services.AddScoped<IOrderReadStore, EfOrderReadStore>();
         services.AddScoped<GetOrder>();
         services.AddScoped<OrderAccessPolicy>();
-        services.AddSingleton(TimeProvider.System);
         AddJwtAuthentication(services, configuration);
         services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser().Build());

@@ -419,3 +419,7 @@ Two new Product creation cases were written first (four-argument factory initial
 ### Phase3B item3.12 — explicit role seed identities
 
 Replaced roleIds[index] coupling with a private role→Guid map. All five IDs, normalized names and concurrency stamps remain byte-identical; enumeration order no longer assigns identity. The preserved Phase1 RoleSeedIntegrityTests already passed before the change and asserts every role against independent expected IDs/stamps in reverse enumeration order. Strict Release build0 warnings/errors;260 Domain+19 stable-seed/Identity/scoped-capability cases passed,0 failed/skipped. EF has-pending-model-changes exit0/no changes; no seed migration or snapshot edit. Diff reviewed. Adding a role now requires an explicit map entry and corresponding stable-ID decision.
+
+### Phase3B item3.13 — clock registration belongs to composition
+
+Added ClockRegistrationTests before changing production; it passed with the old Identity registration. Test verifies one registered TimeProvider, shared SystemClock/IClock across scopes and live propagation of a37-second provider advance. Moved the single TimeProvider.System registration to Program's composition root; all IClock/SystemClock consumers and test overrides unchanged. Strict Release build0 warnings/errors;260 Domain+25 clock/recovery/GPS replay/payment deadline cases passed,0 failed/skipped. No package/schema/clock-policy change; diff reviewed. Approved D4 keeps the wrapper and excludes a broad TimeProvider replacement/testing package.

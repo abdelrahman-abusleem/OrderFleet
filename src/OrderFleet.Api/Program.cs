@@ -20,6 +20,7 @@ var seedOnly = args.Contains("--seed-demo", StringComparer.Ordinal);
 if (migrateOnly && seedOnly) throw new InvalidOperationException("Run migration and seed as separate explicit operations.");
 var builder = WebApplication.CreateBuilder(args.Where(arg => arg is not ("--migrate" or "--seed-demo")).ToArray());
 builder.AddOrderTelemetry();
+builder.Services.AddSingleton(TimeProvider.System);
 
 var connectionString = builder.Configuration
     .GetConnectionString("OrderFleet")
