@@ -441,6 +441,12 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderId")
                         .IsUnique();
 
+                    b.HasIndex("AuthorizedAt", "Id")
+                        .HasDatabaseName("IX_Payments_PendingReconciliation")
+                        .HasFilter("\"State\" = 'PendingReconciliation'");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("AuthorizedAt", "Id"), new[] { "OrderId" });
+
                     b.ToTable("Payments", null, t =>
                         {
                             t.HasCheckConstraint("CK_Payments_Amount", "\"Amount\" > 0 AND \"Amount\" <= 79228162514264337593543950335 AND \"Amount\" = trunc(\"Amount\", 2)");

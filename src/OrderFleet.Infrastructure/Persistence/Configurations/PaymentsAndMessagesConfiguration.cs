@@ -17,6 +17,10 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => x.OrderId).IsUnique();
         builder.HasIndex(x => x.AuthorizationId).IsUnique();
+        // Measured recovery sweep: avoid scanning settled history for the few
+        // captures whose provider outcome still needs reconciliation.
+        builder.HasIndex(x => new { x.AuthorizedAt, x.Id }).HasDatabaseName("IX_Payments_PendingReconciliation")
+            .HasFilter("\"State\" = 'PendingReconciliation'").IncludeProperties(x => x.OrderId);
         builder.HasOne<Order>().WithOne().HasForeignKey<Payment>(x => x.OrderId);
         builder.HasOne<MockPaymentAuthorization>().WithOne().HasForeignKey<Payment>(x => x.AuthorizationId);
         builder.Property(x => x.Amount).HasColumnType("numeric");

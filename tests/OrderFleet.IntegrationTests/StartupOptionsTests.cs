@@ -17,6 +17,8 @@ public sealed class StartupOptionsTests(PostgresFixture fixture) : IClassFixture
     [InlineData("Dispatch:RadiusMeters", "50001")]
     [InlineData("Messaging:LeaseSeconds", "10")]
     [InlineData("Recovery:BatchSize", "0")]
+    [InlineData("Recovery:MaxIdlePollMilliseconds", "99")]
+    [InlineData("Recovery:MaxIdlePollMilliseconds", "30001")]
     [InlineData("Eta:AverageSpeedKmh", "0")]
     public async Task InvalidCriticalOptions_FailStartupWithoutEchoingSecrets(string option, string value)
     {

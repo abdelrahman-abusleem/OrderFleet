@@ -12,6 +12,7 @@ public static class RecoveryRegistration
     {
         services.AddOptions<RecoveryOptions>().Bind(configuration.GetSection("Recovery"))
             .Validate(x => x.BatchSize is >= 1 and <= 100 && x.PollMilliseconds is >= 100 and <= 10000
+                && x.MaxIdlePollMilliseconds >= x.PollMilliseconds && x.MaxIdlePollMilliseconds <= 30000
                 && x.OrphanGraceMinutes is >= 1 and <= 60 && x.MaxFailureAttempts is >= 1 and <= 100, "Invalid recovery bounds.").ValidateOnStart();
         services.AddSingleton(sp =>
         {

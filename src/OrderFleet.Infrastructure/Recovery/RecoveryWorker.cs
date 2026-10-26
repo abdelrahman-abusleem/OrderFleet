@@ -11,9 +11,13 @@ public sealed class RecoveryOptions
 {
     public bool Enabled { get; set; } = true;
     public int PollMilliseconds { get; set; } = 1000;
+    public int MaxIdlePollMilliseconds { get; set; } = 10000;
     public int BatchSize { get; set; } = 20;
     public int OrphanGraceMinutes { get; set; } = 5;
     public int MaxFailureAttempts { get; set; } = 10;
+
+    public int PollDelayMilliseconds(int emptySweeps) => (int)Math.Min(MaxIdlePollMilliseconds,
+        PollMilliseconds * Math.Pow(2, Math.Clamp(emptySweeps, 0, 16)));
 }
 
 public sealed class RecoveryWorker(IServiceScopeFactory scopes, IOptions<RecoveryOptions> options,
@@ -24,6 +28,7 @@ public sealed class RecoveryWorker(IServiceScopeFactory scopes, IOptions<Recover
         if (!options.Value.Enabled) { progress.Disable("recovery"); return; }
         progress.Begin("recovery");
         var failureCount = 0;
+        var emptySweeps = 0;
         try
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -32,13 +37,14 @@ public sealed class RecoveryWorker(IServiceScopeFactory scopes, IOptions<Recover
                 {
                     using var scope = scopes.CreateScope();
                     progress.BeginWork("recovery");
-                    await scope.ServiceProvider.GetRequiredService<RecoverOrderFleet>().ExecuteAsync(stoppingToken);
+                    var examined = await scope.ServiceProvider.GetRequiredService<RecoverOrderFleet>().ExecuteAsync(stoppingToken);
+                    emptySweeps = examined == 0 ? Math.Min(16, emptySweeps + 1) : 0;
                     progress.Success("recovery");
                     failureCount = 0;
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
                 catch (Exception error) { progress.Failure("recovery"); failureCount++; logger.LogWarning("Recovery sweep failed {FailureType}", error.GetType().Name); }
-                var delay = failureCount == 0 ? options.Value.PollMilliseconds : Math.Min(30000, 1000 * Math.Pow(2, Math.Min(5, failureCount)));
+                var delay = failureCount == 0 ? options.Value.PollDelayMilliseconds(emptySweeps) : Math.Min(30000, 1000 * Math.Pow(2, Math.Min(5, failureCount)));
                 await Task.Delay(TimeSpan.FromMilliseconds(delay), stoppingToken);
             }
         }

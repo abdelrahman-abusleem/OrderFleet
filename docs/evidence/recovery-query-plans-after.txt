@@ -1,0 +1,213 @@
+Recovery candidate queries AFTER IndexPendingCaptureRecovery
+Observed 2026-10-26, PostgreSQL 17/PostGIS 3.5, freshly migrated disposable Testcontainers database.
+Seed: tools/seed-recovery-plans.sql. Counts asserted: 100000 Orders, 100000 DispatchJobs; ANALYZE executed.
+Same six EfRecoveryStore SELECTs, captured parameters, EXPLAIN (ANALYZE, BUFFERS).
+Only added index: IX_Payments_PendingReconciliation (AuthorizedAt, Id), INCLUDE OrderId, WHERE State=PendingReconciliation.
+Dataset is synthetic and selective, not a production latency guarantee.
+
+ SELECT o."OrderId"
+ FROM "OrderDeliveryInformation" AS o
+ WHERE o."AcceptanceDeadline" <= @8__locals1_now AND EXISTS (
+     SELECT 1
+     FROM "Orders" AS o0
+     WHERE o0."Id" = o."OrderId" AND o0."Status" = 'Created') AND NOT EXISTS (
+     SELECT 1
+     FROM "RecoveryWorkFailures" AS r
+     WHERE r."Operation" = 'AcceptanceTimeout' AND r."ResourceId" = o."OrderId" AND r."ResolvedAtUtc" IS NULL AND (r."DeadLetteredAtUtc" IS NOT NULL OR r."NextAttemptAtUtc" > @8__locals1_now))
+ ORDER BY o."AcceptanceDeadline", o."OrderId"
+ LIMIT @p
+ Limit  (cost=290.48..580.33 rows=2 width=24) (actual time=0.451..0.454 rows=20 loops=1)
+   Buffers: shared hit=412
+   ->  Incremental Sort  (cost=290.48..580.33 rows=2 width=24) (actual time=0.451..0.452 rows=20 loops=1)
+         Sort Key: o."AcceptanceDeadline", o."OrderId"
+         Presorted Key: o."AcceptanceDeadline"
+         Full-sort Groups: 1  Sort Method: top-N heapsort  Average Memory: 27kB  Peak Memory: 27kB
+         Pre-sorted Groups: 1  Sort Method: top-N heapsort  Average Memory: 26kB  Peak Memory: 26kB
+         Buffers: shared hit=412
+         ->  Nested Loop Anti Join  (cost=0.71..580.24 rows=1 width=24) (actual time=0.020..0.411 rows=100 loops=1)
+               Join Filter: (r."ResourceId" = o."OrderId")
+               Buffers: shared hit=403
+               ->  Nested Loop  (cost=0.71..580.22 rows=1 width=24) (actual time=0.017..0.375 rows=100 loops=1)
+                     Buffers: shared hit=403
+                     ->  Index Scan using "IX_OrderDeliveryInformation_AcceptanceDeadline" on "OrderDeliveryInformation" o  (cost=0.29..9.52 rows=70 width=24) (actual time=0.005..0.017 rows=100 loops=1)
+                           Index Cond: ("AcceptanceDeadline" <= '2026-10-26 12:26:06.936228+00'::timestamp with time zone)
+                           Buffers: shared hit=3
+                     ->  Index Scan using "PK_Orders" on "Orders" o0  (cost=0.42..8.15 rows=1 width=16) (actual time=0.003..0.003 rows=1 loops=100)
+                           Index Cond: ("Id" = o."OrderId")
+                           Filter: (("Status")::text = 'Created'::text)
+                           Buffers: shared hit=400
+               ->  Seq Scan on "RecoveryWorkFailures" r  (cost=0.00..0.00 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=100)
+                     Filter: (("ResolvedAtUtc" IS NULL) AND (("DeadLetteredAtUtc" IS NOT NULL) OR ("NextAttemptAtUtc" > '2026-10-26 12:26:06.936228+00'::timestamp with time zone)) AND (("Operation")::text = 'AcceptanceTimeout'::text))
+ Planning:
+   Buffers: shared hit=257
+ Planning Time: 0.601 ms
+ Execution Time: 0.472 ms
+ SELECT c."OrderId", c."Id"
+ FROM "CourierAssignments" AS c
+ WHERE c."PickedUpAtUtc" IS NULL AND c."ReleasedAtUtc" IS NULL AND c."DeliveredAtUtc" IS NULL AND c."PickupDeadlineUtc" <= @8__locals1_now AND NOT EXISTS (
+     SELECT 1
+     FROM "RecoveryWorkFailures" AS r
+     WHERE r."Operation" = 'AssignmentTimeout' AND r."ResourceId" = c."Id" AND r."ResolvedAtUtc" IS NULL AND (r."DeadLetteredAtUtc" IS NOT NULL OR r."NextAttemptAtUtc" > @8__locals1_now))
+ ORDER BY c."PickupDeadlineUtc", c."Id"
+ LIMIT @p
+ Limit  (cost=184.44..184.45 rows=1 width=40) (actual time=0.074..0.076 rows=20 loops=1)
+   Buffers: shared hit=4
+   ->  Sort  (cost=184.44..184.45 rows=1 width=40) (actual time=0.073..0.074 rows=20 loops=1)
+         Sort Key: c."PickupDeadlineUtc", c."Id"
+         Sort Method: top-N heapsort  Memory: 27kB
+         Buffers: shared hit=4
+         ->  Nested Loop Anti Join  (cost=0.29..184.43 rows=1 width=40) (actual time=0.013..0.055 rows=100 loops=1)
+               Join Filter: (r."ResourceId" = c."Id")
+               Buffers: shared hit=4
+               ->  Index Scan using "IX_CourierAssignments_PickedUpAtUtc_ReleasedAtUtc_PickupDeadli~" on "CourierAssignments" c  (cost=0.29..184.42 rows=1 width=40) (actual time=0.010..0.027 rows=100 loops=1)
+                     Index Cond: (("PickedUpAtUtc" IS NULL) AND ("ReleasedAtUtc" IS NULL) AND ("PickupDeadlineUtc" <= '2026-10-26 12:26:06.936228+00'::timestamp with time zone))
+                     Filter: ("DeliveredAtUtc" IS NULL)
+                     Buffers: shared hit=4
+               ->  Seq Scan on "RecoveryWorkFailures" r  (cost=0.00..0.00 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=100)
+                     Filter: (("ResolvedAtUtc" IS NULL) AND (("DeadLetteredAtUtc" IS NOT NULL) OR ("NextAttemptAtUtc" > '2026-10-26 12:26:06.936228+00'::timestamp with time zone)) AND (("Operation")::text = 'AssignmentTimeout'::text))
+ Planning:
+   Buffers: shared hit=85
+ Planning Time: 0.240 ms
+ Execution Time: 0.088 ms
+ SELECT o."Id"
+ FROM "Orders" AS o
+ WHERE o."Status" = 'Accepted' AND EXISTS (
+     SELECT 1
+     FROM "Payments" AS p
+     WHERE p."OrderId" = o."Id" AND p."State" = 'Captured') AND (NOT EXISTS (
+     SELECT 1
+     FROM "DispatchJobs" AS d
+     WHERE d."OrderId" = o."Id") OR EXISTS (
+     SELECT 1
+     FROM "DispatchJobs" AS d0
+     WHERE d0."OrderId" = o."Id" AND d0."Status" = 'Pending' AND d0."NextAttemptAtUtc" <= @8__locals1_now)) AND NOT EXISTS (
+     SELECT 1
+     FROM "RecoveryWorkFailures" AS r
+     WHERE r."Operation" = 'DispatchRetry' AND r."ResourceId" = o."Id" AND r."ResolvedAtUtc" IS NULL AND (r."DeadLetteredAtUtc" IS NOT NULL OR r."NextAttemptAtUtc" > @8__locals1_now))
+ ORDER BY o."AcceptedAt", o."Id"
+ LIMIT @p
+ Limit  (cost=3240.14..3240.19 rows=20 width=24) (actual time=1.394..1.397 rows=20 loops=1)
+   Buffers: shared hit=891
+   ->  Sort  (cost=3240.14..3240.30 rows=65 width=24) (actual time=1.392..1.394 rows=20 loops=1)
+         Sort Key: o."AcceptedAt", o."Id"
+         Sort Method: top-N heapsort  Memory: 27kB
+         Buffers: shared hit=891
+         ->  Nested Loop Anti Join  (cost=0.71..3238.41 rows=65 width=24) (actual time=0.306..1.356 rows=100 loops=1)
+               Join Filter: (r."ResourceId" = o."Id")
+               Buffers: shared hit=891
+               ->  Nested Loop  (cost=0.71..3237.60 rows=65 width=24) (actual time=0.302..1.288 rows=100 loops=1)
+                     Buffers: shared hit=891
+                     ->  Index Scan using "IX_Orders_RestaurantId_Status_CreatedAt" on "Orders" o  (cost=0.29..2705.16 rows=65 width=24) (actual time=0.284..0.818 rows=100 loops=1)
+                           Index Cond: (("Status")::text = 'Accepted'::text)
+                           Filter: ((NOT EXISTS(SubPlan 1)) OR (ANY ("Id" = (hashed SubPlan 4).col1)))
+                           Buffers: shared hit=491
+                           SubPlan 1
+                             ->  Index Only Scan using "PK_DispatchJobs" on "DispatchJobs" d  (cost=0.42..8.44 rows=1 width=0) (actual time=0.004..0.004 rows=1 loops=100)
+                                   Index Cond: ("OrderId" = o."Id")
+                                   Heap Fetches: 100
+                                   Buffers: shared hit=400
+                           SubPlan 4
+                             ->  Index Scan using "IX_DispatchJobs_Status_NextAttemptAtUtc" on "DispatchJobs" d0  (cost=0.29..500.56 rows=297 width=16) (actual time=0.027..0.134 rows=300 loops=1)
+                                   Index Cond: ((("Status")::text = 'Pending'::text) AND ("NextAttemptAtUtc" <= '2026-10-26 12:26:06.936228+00'::timestamp with time zone))
+                                   Buffers: shared hit=6
+                     ->  Index Scan using "IX_Payments_OrderId" on "Payments" p  (cost=0.42..8.19 rows=1 width=16) (actual time=0.004..0.004 rows=1 loops=100)
+                           Index Cond: ("OrderId" = o."Id")
+                           Filter: (("State")::text = 'Captured'::text)
+                           Buffers: shared hit=400
+               ->  Seq Scan on "RecoveryWorkFailures" r  (cost=0.00..0.00 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=100)
+                     Filter: (("ResolvedAtUtc" IS NULL) AND (("DeadLetteredAtUtc" IS NOT NULL) OR ("NextAttemptAtUtc" > '2026-10-26 12:26:06.936228+00'::timestamp with time zone)) AND (("Operation")::text = 'DispatchRetry'::text))
+ Planning:
+   Buffers: shared hit=132
+ Planning Time: 1.355 ms
+ Execution Time: 1.458 ms
+ SELECT o."AggregateId", o."Id"
+ FROM "OutboxMessages" AS o
+ WHERE o."Type" = 'order.cancelled.v1' AND EXISTS (
+     SELECT 1
+     FROM "Payments" AS p
+     WHERE p."OrderId" = o."AggregateId" AND p."State" <> 'Voided' AND p."State" <> 'Refunded') AND NOT EXISTS (
+     SELECT 1
+     FROM "RecoveryWorkFailures" AS r
+     WHERE r."Operation" = 'PaymentSettlement' AND r."ResourceId" = o."AggregateId" AND r."ResolvedAtUtc" IS NULL AND (r."DeadLetteredAtUtc" IS NOT NULL OR r."NextAttemptAtUtc" > @8__locals1_now))
+ ORDER BY o."Sequence"
+ LIMIT @p
+ Limit  (cost=0.71..1064.90 rows=20 width=40) (actual time=0.062..0.123 rows=20 loops=1)
+   Buffers: shared hit=90
+   ->  Nested Loop Anti Join  (cost=0.71..6226.24 rows=117 width=40) (actual time=0.061..0.120 rows=20 loops=1)
+         Join Filter: (r."ResourceId" = o."AggregateId")
+         Buffers: shared hit=90
+         ->  Nested Loop  (cost=0.71..6224.77 rows=117 width=40) (actual time=0.058..0.112 rows=20 loops=1)
+               Buffers: shared hit=90
+               ->  Index Scan using "IX_OutboxMessages_Sequence" on "OutboxMessages" o  (cost=0.29..5297.29 rows=117 width=40) (actual time=0.048..0.051 rows=20 loops=1)
+                     Filter: (("Type")::text = 'order.cancelled.v1'::text)
+                     Rows Removed by Filter: 300
+                     Buffers: shared hit=10
+               ->  Index Scan using "IX_Payments_OrderId" on "Payments" p  (cost=0.42..7.93 rows=1 width=16) (actual time=0.003..0.003 rows=1 loops=20)
+                     Index Cond: ("OrderId" = o."AggregateId")
+                     Filter: ((("State")::text <> 'Voided'::text) AND (("State")::text <> 'Refunded'::text))
+                     Buffers: shared hit=80
+         ->  Seq Scan on "RecoveryWorkFailures" r  (cost=0.00..0.00 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=20)
+               Filter: (("ResolvedAtUtc" IS NULL) AND (("DeadLetteredAtUtc" IS NOT NULL) OR ("NextAttemptAtUtc" > '2026-10-26 12:26:06.936228+00'::timestamp with time zone)) AND (("Operation")::text = 'PaymentSettlement'::text))
+ Planning:
+   Buffers: shared hit=101
+ Planning Time: 0.339 ms
+ Execution Time: 0.137 ms
+ SELECT p."OrderId"
+ FROM "Payments" AS p
+ WHERE p."State" = 'PendingReconciliation' AND NOT EXISTS (
+     SELECT 1
+     FROM "RecoveryWorkFailures" AS r
+     WHERE r."Operation" = 'CaptureReconciliation' AND r."ResourceId" = p."OrderId" AND r."ResolvedAtUtc" IS NULL AND (r."DeadLetteredAtUtc" IS NOT NULL OR r."NextAttemptAtUtc" > @8__locals1_now))
+ ORDER BY p."AuthorizedAt", p."Id"
+ LIMIT @p
+ Limit  (cost=0.14..36.77 rows=20 width=40) (actual time=0.016..0.027 rows=20 loops=1)
+   Buffers: shared hit=12
+   ->  Nested Loop Anti Join  (cost=0.14..188.79 rows=103 width=40) (actual time=0.015..0.026 rows=20 loops=1)
+         Join Filter: (r."ResourceId" = p."OrderId")
+         Buffers: shared hit=12
+         ->  Index Only Scan using "IX_Payments_PendingReconciliation" on "Payments" p  (cost=0.14..187.50 rows=103 width=40) (actual time=0.013..0.018 rows=20 loops=1)
+               Heap Fetches: 20
+               Buffers: shared hit=12
+         ->  Seq Scan on "RecoveryWorkFailures" r  (cost=0.00..0.00 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=20)
+               Filter: (("ResolvedAtUtc" IS NULL) AND (("DeadLetteredAtUtc" IS NOT NULL) OR ("NextAttemptAtUtc" > '2026-10-26 12:26:06.936228+00'::timestamp with time zone)) AND (("Operation")::text = 'CaptureReconciliation'::text))
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.115 ms
+ Execution Time: 0.037 ms
+ SELECT m."Id"
+ FROM "MockPaymentAuthorizations" AS m
+ WHERE m."State" = 'Authorized' AND m."CreatedAt" <= @8__locals1_cutoff AND NOT EXISTS (
+     SELECT 1
+     FROM "Payments" AS p
+     WHERE p."AuthorizationId" = m."Id") AND NOT EXISTS (
+     SELECT 1
+     FROM "RecoveryWorkFailures" AS r
+     WHERE r."Operation" = 'OrphanAuthorization' AND r."ResourceId" = m."Id" AND r."ResolvedAtUtc" IS NULL AND (r."DeadLetteredAtUtc" IS NOT NULL OR r."NextAttemptAtUtc" > @8__locals1_now))
+ ORDER BY m."CreatedAt", m."Id"
+ LIMIT @p
+ Limit  (cost=867.50..1734.37 rows=2 width=24) (actual time=0.849..0.858 rows=20 loops=1)
+   Buffers: shared hit=708
+   ->  Incremental Sort  (cost=867.50..1734.37 rows=2 width=24) (actual time=0.848..0.852 rows=20 loops=1)
+         Sort Key: m."CreatedAt", m."Id"
+         Presorted Key: m."CreatedAt"
+         Full-sort Groups: 1  Sort Method: top-N heapsort  Average Memory: 27kB  Peak Memory: 27kB
+         Pre-sorted Groups: 1  Sort Method: top-N heapsort  Average Memory: 26kB  Peak Memory: 26kB
+         Buffers: shared hit=708
+         ->  Nested Loop Anti Join  (cost=0.71..1734.28 rows=1 width=24) (actual time=0.292..0.789 rows=100 loops=1)
+               Join Filter: (r."ResourceId" = m."Id")
+               Buffers: shared hit=708
+               ->  Nested Loop Anti Join  (cost=0.71..1734.26 rows=1 width=24) (actual time=0.289..0.709 rows=100 loops=1)
+                     Buffers: shared hit=708
+                     ->  Index Scan using "IX_MockPaymentAuthorizations_State_CreatedAt" on "MockPaymentAuthorizations" m  (cost=0.29..328.38 rows=184 width=24) (actual time=0.012..0.058 rows=200 loops=1)
+                           Index Cond: ((("State")::text = 'Authorized'::text) AND ("CreatedAt" <= '2026-10-26 12:21:06.936228+00'::timestamp with time zone))
+                           Buffers: shared hit=8
+                     ->  Index Only Scan using "IX_Payments_AuthorizationId" on "Payments" p  (cost=0.42..7.63 rows=1 width=16) (actual time=0.003..0.003 rows=0 loops=200)
+                           Index Cond: ("AuthorizationId" = m."Id")
+                           Heap Fetches: 100
+                           Buffers: shared hit=700
+               ->  Seq Scan on "RecoveryWorkFailures" r  (cost=0.00..0.00 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=100)
+                     Filter: (("ResolvedAtUtc" IS NULL) AND (("DeadLetteredAtUtc" IS NOT NULL) OR ("NextAttemptAtUtc" > '2026-10-26 12:26:06.936228+00'::timestamp with time zone)) AND (("Operation")::text = 'OrphanAuthorization'::text))
+ Planning:
+   Buffers: shared hit=80
+ Planning Time: 0.325 ms
+ Execution Time: 0.885 ms
