@@ -42,7 +42,9 @@ public sealed class ManageCourier(ICourierStore store, IClock clock, CourierPoli
         // a replay carrying sub-microsecond ticks cannot look newer after reload.
         var utc = observedAt.Value.ToUniversalTime();
         var observation = new DateTimeOffset(utc.Ticks - utc.Ticks % 10, TimeSpan.Zero);
+        var previousObservation = courier.LocationObservedAt;
         courier.UpdateLocation(coordinates, observation);
+        if (previousObservation == observation) return;
         await store.SaveAsync(courier, cancellationToken);
     }
 

@@ -5,6 +5,20 @@ namespace OrderFleet.Domain.Tests;
 
 public sealed class CourierTests
 {
+    [Fact]
+    public void IdenticalObservationReplay_IsNoOp()
+    {
+        var courier = Courier.Register(Guid.NewGuid());
+        var observed = new DateTimeOffset(2026, 10, 26, 12, 0, 0, TimeSpan.Zero);
+        courier.UpdateLocation(new(24.7m, 46.7m), observed);
+        courier.UpdateLocation(new(24.7m, 46.7m), observed);
+        Assert.Equal(observed, courier.LocationObservedAt);
+        Assert.Equal(24.7m, courier.Latitude);
+        Assert.Equal(46.7m, courier.Longitude);
+        Assert.Equal(CourierStatus.Offline, courier.Status);
+        Assert.Null(courier.AssignmentId);
+    }
+
     private static readonly DateTimeOffset Now = new(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]

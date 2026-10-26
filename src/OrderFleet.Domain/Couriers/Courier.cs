@@ -30,6 +30,7 @@ public sealed class Courier
 
     public void UpdateLocation(Coordinates coordinates, DateTimeOffset observedAt)
     {
+        if (observedAt == LocationObservedAt && coordinates.Latitude == Latitude && coordinates.Longitude == Longitude) return;
         if (LocationObservedAt.HasValue && observedAt <= LocationObservedAt.Value)
             throw new DomainException("Location must be newer than the current observation.");
         Latitude = coordinates.Latitude;
