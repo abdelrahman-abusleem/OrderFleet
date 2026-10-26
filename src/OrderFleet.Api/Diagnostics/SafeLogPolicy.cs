@@ -14,6 +14,7 @@ public sealed class SafeLogPolicy : ILogEventEnricher
         "Unhandled request failure {FailureType}; trace {TraceId}", "Request failed with {FailureType}; trace {TraceId}",
         "Outbox lease expired for {MessageId}", "Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}",
         "Outbox completion deferred {MessageId} {FailureType}",
+        "Courier capacity missing for order {OrderId}",
         "Outbox worker unavailable {FailureType}", "{Consumer} consumer unavailable {FailureType}",
         "Operational metrics unavailable {FailureType}",
         "Consumer {Consumer} failed {MessageId} {FailureCode} attempt {Attempt}"

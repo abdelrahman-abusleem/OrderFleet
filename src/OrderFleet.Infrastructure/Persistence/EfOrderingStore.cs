@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Orders;
@@ -10,7 +12,7 @@ using OrderFleet.Infrastructure.Messaging;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
-public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStore
+public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrderingStore>? logger = null) : IOrderingStore
 {
     public Task<OrderReplay?> FindReplayAsync(Guid actorId, string key, CancellationToken cancellationToken) =>
         context.OrderCreationRequests.AsNoTracking().Where(x => x.ActorId == actorId && x.Key == key)
@@ -132,7 +134,10 @@ public sealed class EfOrderingStore(OrderFleetDbContext context) : IOrderingStor
                 $"SELECT *, xmin FROM \"Couriers\" WHERE \"Id\" = {references.Value.CourierId} FOR UPDATE").SingleOrDefaultAsync(ct);
             // Standalone legacy Order persistence does not require a Courier
             // profile. Application dispatch/transition paths always require it.
-            courier?.Release(orderId, references.Value.AssignmentId);
+            if (courier is null)
+                (logger ?? context.GetService<ILoggerFactory>().CreateLogger<EfOrderingStore>())
+                    .LogWarning("Courier capacity missing for order {OrderId}", orderId);
+            else courier.Release(orderId, references.Value.AssignmentId);
         }
     }
 
