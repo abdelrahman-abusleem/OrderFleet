@@ -7,12 +7,13 @@ using OrderFleet.Application.Diagnostics;
 namespace OrderFleet.Infrastructure.Messaging;
 
 public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, IClock clock,
-    IOptions<RabbitOptions> options, ILogger<OutboxRelay> logger)
+    IOptions<RabbitOptions> options, ILogger<OutboxRelay> logger, IOptions<OutboxOptions>? batching = null)
 {
     public async Task<int> RunBatchAsync(CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        var leases = await store.ClaimAsync(5, clock.UtcNow, TimeSpan.FromSeconds(settings.LeaseSeconds), cancellationToken);
+        var batchSize = (batching?.Value ?? new OutboxOptions()).BatchSize;
+        var leases = await store.ClaimAsync(batchSize, clock.UtcNow, TimeSpan.FromSeconds(settings.LeaseSeconds), cancellationToken);
         foreach (var lease in leases)
         {
             try

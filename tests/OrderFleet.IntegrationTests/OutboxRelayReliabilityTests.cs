@@ -7,6 +7,7 @@ using OrderFleet.Domain.Payments;
 using OrderFleet.Infrastructure.Clock;
 using OrderFleet.Infrastructure.Messaging;
 using OrderFleet.Infrastructure.Persistence;
+using OrderFleet.Infrastructure.Reliability;
 
 namespace OrderFleet.IntegrationTests;
 
@@ -79,6 +80,27 @@ public sealed class OutboxRelayReliabilityTests(PostgresFixture postgres, Rabbit
         var retryAt = row.NextAttemptAtUtc;
         var retry = Assert.Single(await store.ClaimAsync(1, retryAt, TimeSpan.FromSeconds(60), CancellationToken.None));
         Assert.True(await store.FailAsync(retry, retryAt, "BrokerUnavailable", 2, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task PersistedFailure_UsesInjectedRetryPolicy()
+    {
+        var instant = DateTimeOffset.UtcNow;
+        var now = new DateTimeOffset(instant.Ticks - instant.Ticks % 10, TimeSpan.Zero);
+        var fact = await InsertFactAsync(now);
+        var store = new PostgresOutboxStore(new TestContextFactory(postgres), new FixedBackoff());
+        var lease = Assert.Single(await store.ClaimAsync(1, now, TimeSpan.FromSeconds(60), CancellationToken.None));
+        Assert.True(await store.FailAsync(lease, now, "BrokerUnavailable", 2, CancellationToken.None));
+        await using var verify = postgres.CreateContext();
+        var row = await verify.OutboxMessages.SingleAsync(x => x.Id == fact.MessageId);
+        Assert.Equal(now.AddSeconds(17), row.NextAttemptAtUtc);
+        var retry = Assert.Single(await store.ClaimAsync(1, row.NextAttemptAtUtc, TimeSpan.FromSeconds(60), CancellationToken.None));
+        Assert.True(await store.FailAsync(retry, row.NextAttemptAtUtc, "BrokerUnavailable", 2, CancellationToken.None));
+    }
+
+    private sealed class FixedBackoff : IRetryBackoff
+    {
+        public TimeSpan GetDelay(int attempt, TimeSpan initial, TimeSpan maximum) => TimeSpan.FromSeconds(17);
     }
 
     private async Task<IntegrationEvent> InsertFactAsync(DateTimeOffset now)

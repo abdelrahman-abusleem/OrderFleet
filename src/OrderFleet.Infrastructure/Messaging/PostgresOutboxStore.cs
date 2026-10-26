@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Application.Messaging;
 using OrderFleet.Infrastructure.Persistence;
+using OrderFleet.Infrastructure.Reliability;
 
 namespace OrderFleet.Infrastructure.Messaging;
 
-public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> contexts) : IOutboxStore
+public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> contexts, IRetryBackoff? backoff = null) : IOutboxStore
 {
+    private readonly IRetryBackoff retries = backoff ?? new JitteredRetryBackoff();
     public async Task<IReadOnlyList<OutboxLease>> ClaimAsync(int count, DateTimeOffset now, TimeSpan leaseDuration, CancellationToken cancellationToken)
     {
         if (count is < 1 or > 100 || leaseDuration < TimeSpan.FromSeconds(1) || leaseDuration > TimeSpan.FromMinutes(10))
@@ -42,7 +44,7 @@ public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> c
     {
         if (maxAttempts is < 1 or > 100 || errorCode is not ("BrokerUnavailable" or "InvalidEnvelope")) throw new ArgumentException("Invalid retry policy.");
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);
-        var next = now.AddSeconds(Math.Min(300, Math.Pow(2, Math.Min(lease.Attempts, 8))));
+        var next = now + retries.GetDelay(lease.Attempts, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(300));
         DateTimeOffset? dead = lease.Attempts >= maxAttempts ? now : null;
         return await context.OutboxMessages.Where(x => x.Id == lease.Message.MessageId && x.LeaseId == lease.LeaseId
                 && x.LeasedUntilUtc > now && x.PublishedAtUtc == null && x.DeadLetteredAtUtc == null)
