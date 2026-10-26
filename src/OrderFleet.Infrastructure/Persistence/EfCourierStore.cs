@@ -31,7 +31,7 @@ public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock, IO
         if (observed && position is not null && await ShouldEmitAsync(courier, position, now, cancellationToken))
         {
             position.RecordEmission(courier.AssignmentId!.Value, now);
-                context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), IntegrationEventTypes.CourierLocationUpdated, 1,
+            context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), IntegrationEventTypes.CourierLocationUpdated, 1,
                 now, courier.Id, System.Diagnostics.Activity.Current?.TraceId.ToString(),
                 JsonSerializer.Serialize(new { courierId = courier.Id, observedAt = courier.LocationObservedAt }),
                 TraceParent: OrderFleet.Application.Diagnostics.OrderFleetDiagnostics.CurrentTraceParent)));
