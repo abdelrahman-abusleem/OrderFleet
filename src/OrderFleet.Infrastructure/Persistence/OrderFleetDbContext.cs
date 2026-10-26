@@ -20,6 +20,15 @@ namespace OrderFleet.Infrastructure.Persistence;
 
 public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, IdentityRole<Guid>, Guid>
 {
+    private static readonly IReadOnlyDictionary<string, Guid> RoleIds = new Dictionary<string, Guid>
+    {
+        [OrderFleetRoles.Customer] = new("c92cb45d-1e41-43c8-b5dc-000000000001"),
+        [OrderFleetRoles.RestaurantStaff] = new("c92cb45d-1e41-43c8-b5dc-000000000002"),
+        [OrderFleetRoles.RestaurantOwner] = new("c92cb45d-1e41-43c8-b5dc-000000000003"),
+        [OrderFleetRoles.Courier] = new("c92cb45d-1e41-43c8-b5dc-000000000004"),
+        [OrderFleetRoles.Admin] = new("c92cb45d-1e41-43c8-b5dc-000000000005")
+    };
+
     public OrderFleetDbContext(
         DbContextOptions<OrderFleetDbContext> options)
         : base(options)
@@ -60,18 +69,12 @@ public sealed class OrderFleetDbContext : IdentityDbContext<IdentityUser<Guid>, 
         memberships.HasKey(x => new { x.UserId, x.RestaurantId });
         memberships.HasOne<IdentityUser<Guid>>().WithMany().HasForeignKey(x => x.UserId);
         memberships.HasOne<Restaurant>().WithMany().HasForeignKey(x => x.RestaurantId);
-        var roleIds = new[]
-        {
-            "c92cb45d-1e41-43c8-b5dc-000000000001", "c92cb45d-1e41-43c8-b5dc-000000000002",
-            "c92cb45d-1e41-43c8-b5dc-000000000003", "c92cb45d-1e41-43c8-b5dc-000000000004",
-            "c92cb45d-1e41-43c8-b5dc-000000000005"
-        };
-        modelBuilder.Entity<IdentityRole<Guid>>().HasData(OrderFleetRoles.All.Select((role, index) =>
+        modelBuilder.Entity<IdentityRole<Guid>>().HasData(OrderFleetRoles.All.Select(role =>
             new IdentityRole<Guid>(role)
             {
-                Id = Guid.Parse(roleIds[index]),
+                Id = RoleIds[role],
                 NormalizedName = role.ToUpperInvariant(),
-                ConcurrencyStamp = roleIds[index]
+                ConcurrencyStamp = RoleIds[role].ToString("D")
             }));
 
         modelBuilder.ApplyConfigurationsFromAssembly(
