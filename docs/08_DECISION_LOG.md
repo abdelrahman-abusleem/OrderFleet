@@ -249,3 +249,9 @@ Recovery idle latency is explicitly bounded at10s by default, configurable to at
 ### Hardening item2.9 — concrete ADR-022 scale-out prerequisite
 
 Keep the current single API realtime instance. Future Redis SignalR backplane/equivalent requires transport affinity and a tested registry/fanout design: the single Rabbit realtime queue is competing-consumer delivery, while OrderConnections holds local authority/subscription/sequence state. A backplane by itself does not repair that distribution. Choose per-replica event fanout with local live checks or a distributed registry with explicit revocation/sequence guarantees. Acceptance includes multi-replica reconnect, authority revocation, token expiry, private location filtering, stale/duplicate events and broker/backplane failure. No implementation/package/service addition is authorized by this documentation update.
+
+### Hardening groups3C/3D — retained clock and spatial projection
+
+Approved D4 retains IClock as the documented SystemClock wrapper over the single registered TimeProvider. Composition owns registration; no broad replacement or testing package. ClockRegistrationTests proves shared lifetime and the real override path.
+
+CourierPosition is the PostGIS spatial read projection of Courier's current location; both representations remain intentional. EfCourierStore persists profile, projection and private emission checkpoint/Outbox changes in the same SaveChanges transaction. Identical normalized replay writes neither representation. CourierReplayTests and CourierEventThrottleTests added in this pass prove equality, timestamp ordering and stale-writer rollback of both representations/checkpoint/events. Query/dispatch authority remains the aggregate plus database fences, never the projection/checkpoint. No representation removed or schema change in group3D.

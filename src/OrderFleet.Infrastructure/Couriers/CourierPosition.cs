@@ -3,7 +3,10 @@ using OrderFleet.Domain.Couriers;
 
 namespace OrderFleet.Infrastructure.Couriers;
 
-// Spatial storage adapter; NTS types never cross into Domain/Application.
+// Spatial read projection of Courier's location. EfCourierStore writes both in
+// the same SaveChanges transaction; identical GPS replay writes neither.
+// Emission fields are a private throttle checkpoint, not assignment authority.
+// NTS types never cross into Domain/Application.
 public sealed class CourierPosition
 {
     public Guid CourierId { get; private set; }

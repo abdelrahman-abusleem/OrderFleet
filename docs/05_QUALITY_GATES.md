@@ -171,3 +171,7 @@ Release build0 warnings/errors, full formatter/analyzer verification exit0, full
 ### Hardening group3A — VERIFIED
 
 Named fixed vocabularies preserve stored/wire strings; seven actual PostgreSQL dispatch-vocabulary round trips pass and EF drift is clean. DomainException pure shared-namespace move retains every existing exact-exception assertion and HTTP/error mapping. Strict Release build0 warnings/errors,258 Domain+248 full Integration=506 passed,0 failed/skipped. No schema/package change in3A. Continue group3B; exact commands/results in07_PROGRESS_AND_HANDOFF.md.
+
+### Hardening Gate3 — VERIFIED
+
+Groups3A–3D complete under approved exceptions. Full Release solution test run520 passed (260 Domain+260 Integration),0 failed/skipped. All slice builds0 warnings/errors; final isolated style/projection rebuild260 Domain+20 real clock/GPS tests passed; full formatter recheck exit0 after correcting one indentation and two unused imports. Actual query-order tests passed before/after effects extraction; lock helper preserves tracked-root CAS and sorted ordering; nearest-courier SQL compared exactly; real mandatory-return test proves original remains unacked and redelivers after reconnect. Role IDs/stamps and currency CHECK produce no EF drift; no Phase3 schema/package change. Exact commands and rejected speculative changes recorded in07_PROGRESS_AND_HANDOFF.md. Final clean-source/migration/smoke gate remains Phase5.
