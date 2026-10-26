@@ -27,7 +27,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         await using var context = await contexts.CreateDbContextAsync(ct);
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
-        var order = await LockOrderAsync(context, orderId, ct);
+        var order = await OrderLocking.LoadForUpdateAsync(context, orderId, ct);
         if (order?.Status != OrderStatus.Created || !await context.OrderDeliveryInformation.AnyAsync(
             x => x.OrderId == orderId && x.AcceptanceDeadline <= now, ct)) return false;
         order.Cancel(CancellationReason.AcceptanceTimedOut, now);
@@ -53,7 +53,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         await using var context = await contexts.CreateDbContextAsync(ct);
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
-        var order = await LockOrderAsync(context, orderId, ct);
+        var order = await OrderLocking.LoadForUpdateAsync(context, orderId, ct);
         if (order?.Status != OrderStatus.Assigned || order.AssignmentId != assignmentId
             || !await context.CourierAssignments.AnyAsync(x => x.Id == assignmentId && x.OrderId == orderId
                 && x.PickedUpAtUtc == null && x.ReleasedAtUtc == null && x.PickupDeadlineUtc <= now, ct)) return false;
@@ -164,6 +164,4 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
             .ExecuteUpdateAsync(set => set.SetProperty(f => f.ResolvedAtUtc, now), ct);
     }
 
-    private static Task<Order?> LockOrderAsync(OrderFleetDbContext context, Guid id, CancellationToken ct) =>
-        context.Orders.FromSqlInterpolated($"SELECT *, xmin FROM \"Orders\" WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
 }

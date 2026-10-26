@@ -18,7 +18,7 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         await using var context = await contexts.CreateDbContextAsync(ct);
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
-        var order = await LockOrderAsync(context, orderId, ct);
+        var order = await OrderLocking.LoadForUpdateAsync(context, orderId, ct);
         if (messageId.HasValue && await context.InboxMessages.AnyAsync(x => x.MessageId == messageId && x.Consumer == Consumer, ct))
             return DispatchOutcome.AlreadyProcessed;
         var outcome = DispatchOutcome.NotEligible;
@@ -77,7 +77,7 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         await using var context = await contexts.CreateDbContextAsync(ct);
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
-        var order = await LockOrderAsync(context, orderId, ct) ?? throw new ResourceNotFoundException();
+        var order = await OrderLocking.LoadForUpdateAsync(context, orderId, ct) ?? throw new ResourceNotFoundException();
         if (!administrativeRelease && order.CourierId != actorId) throw new ResourceNotFoundException();
         if (order.AssignmentId != assignmentId) throw new OperationConflictException("Assignment is no longer current.");
         var courier = await context.Couriers.FromSqlInterpolated(
@@ -103,6 +103,4 @@ public sealed class EfDispatchStore(IDbContextFactory<OrderFleetDbContext> conte
         order.ClearDomainEvents();
     }
 
-    private static Task<Order?> LockOrderAsync(OrderFleetDbContext context, Guid orderId, CancellationToken ct) =>
-        context.Orders.FromSqlInterpolated($"SELECT *, xmin FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE").SingleOrDefaultAsync(ct);
 }

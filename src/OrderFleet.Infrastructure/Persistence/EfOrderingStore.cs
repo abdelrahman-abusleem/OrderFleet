@@ -86,8 +86,7 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
         var roots = context.ChangeTracker.Entries<Order>().Where(x => x.Entity.DomainEvents.Count > 0)
             .OrderBy(x => x.Entity.Id).ToArray();
         foreach (var root in roots.Where(x => x.State != EntityState.Added))
-            await context.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT 1 FROM \"Orders\" WHERE \"Id\" = {root.Entity.Id} FOR UPDATE", cancellationToken);
+            await OrderLocking.LockTrackedAsync(context, root.Entity.Id, cancellationToken);
         await SynchronizeOrderTransitionEffectsAsync(roots.Select(x => x.Entity), cancellationToken);
         var staged = new OutboxEventWriter(context).StageOrderFacts();
         try { await context.SaveChangesAsync(cancellationToken); }

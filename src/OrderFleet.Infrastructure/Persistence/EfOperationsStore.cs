@@ -59,8 +59,7 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
         await LockActorAsync(actorId, ct);
         if (await ReplayAsync(actorId, OperationNames.RetryDispatch, key, orderId, ct)) return;
-        var order = await context.Orders.FromSqlInterpolated($"SELECT *, xmin FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE")
-            .SingleOrDefaultAsync(ct) ?? throw new ResourceNotFoundException();
+        var order = await OrderLocking.LoadForUpdateAsync(context, orderId, ct) ?? throw new ResourceNotFoundException();
         if (order.Status != OrderStatus.Accepted || !await context.Payments.AnyAsync(x => x.OrderId == orderId && x.State == PaymentState.Captured, ct))
             throw new OperationConflictException("Only accepted captured orders can restart dispatch.");
         var job = await context.DispatchJobs.SingleOrDefaultAsync(x => x.OrderId == orderId, ct);
