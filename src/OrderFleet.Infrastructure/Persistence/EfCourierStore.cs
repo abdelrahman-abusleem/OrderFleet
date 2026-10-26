@@ -4,7 +4,6 @@ using Npgsql;
 using OrderFleet.Application.Couriers;
 using OrderFleet.Application.Errors;
 using OrderFleet.Domain.Couriers;
-using OrderFleet.Infrastructure.Couriers;
 using OrderFleet.Application.Clock;
 using OrderFleet.Application.Messaging;
 using System.Text.Json;

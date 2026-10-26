@@ -7,12 +7,10 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Restaurants;
 using OrderFleet.Infrastructure.Identity;
-using OrderFleet.Infrastructure.Persistence;
 
 namespace OrderFleet.IntegrationTests;
 

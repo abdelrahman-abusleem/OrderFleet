@@ -2,10 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using OrderFleet.Application.Couriers;
 using OrderFleet.Application.Dispatch;
 using OrderFleet.Application.Errors;
-using OrderFleet.Domain.Couriers;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
-using OrderFleet.Infrastructure.Dispatch;
 
 namespace OrderFleet.Infrastructure.Persistence;
 

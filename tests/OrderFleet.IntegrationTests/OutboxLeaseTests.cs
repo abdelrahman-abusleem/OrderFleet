@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using OrderFleet.Application.Messaging;
 using OrderFleet.Infrastructure.Messaging;
 
 namespace OrderFleet.IntegrationTests;

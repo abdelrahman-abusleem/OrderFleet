@@ -1,5 +1,4 @@
 using OrderFleet.Domain.Couriers;
-using OrderFleet.Domain.Geo;
 using OrderFleet.Domain.Orders;
 
 namespace OrderFleet.Domain.Tests;

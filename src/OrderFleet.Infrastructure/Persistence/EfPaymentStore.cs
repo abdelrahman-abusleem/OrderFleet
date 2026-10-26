@@ -4,7 +4,6 @@ using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Payments;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Domain.Payments;
-using OrderFleet.Infrastructure.Messaging;
 
 namespace OrderFleet.Infrastructure.Persistence;
 

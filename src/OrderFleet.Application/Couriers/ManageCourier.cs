@@ -2,7 +2,6 @@ using OrderFleet.Application.Catalog;
 using OrderFleet.Application.Clock;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Identity;
-using OrderFleet.Application.Orders;
 using OrderFleet.Domain.Couriers;
 
 namespace OrderFleet.Application.Couriers;

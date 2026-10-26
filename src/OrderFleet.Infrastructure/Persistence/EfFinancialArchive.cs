@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using OrderFleet.Application.Clock;
 using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Payments;
-using OrderFleet.Infrastructure.Payments;
 
 namespace OrderFleet.Infrastructure.Persistence;
 

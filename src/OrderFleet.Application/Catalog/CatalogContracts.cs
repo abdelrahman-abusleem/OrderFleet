@@ -1,4 +1,3 @@
-using OrderFleet.Application.Identity;
 using OrderFleet.Domain.Restaurants;
 
 namespace OrderFleet.Application.Catalog;

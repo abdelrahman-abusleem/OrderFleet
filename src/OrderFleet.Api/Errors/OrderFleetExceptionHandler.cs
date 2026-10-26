@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Application.Errors;
-using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Api.Errors;
 

@@ -1,6 +1,5 @@
 using OrderFleet.Application.Identity;
 using OrderFleet.Domain.Orders;
-using OrderFleet.Application.Catalog;
 
 namespace OrderFleet.Application.Orders;
 

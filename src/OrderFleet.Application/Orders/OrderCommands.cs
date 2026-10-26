@@ -4,7 +4,6 @@ using OrderFleet.Application.Errors;
 using OrderFleet.Application.Identity;
 using OrderFleet.Domain.Orders;
 using OrderFleet.Application.Payments;
-using OrderFleet.Domain.Payments;
 
 namespace OrderFleet.Application.Orders;
 

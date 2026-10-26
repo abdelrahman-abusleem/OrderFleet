@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Operations;
 using OrderFleet.Domain.Orders;

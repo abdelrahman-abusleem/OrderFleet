@@ -5,7 +5,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using OrderFleet.Application.Identity;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Orders;
 using OrderFleet.Domain.Orders;

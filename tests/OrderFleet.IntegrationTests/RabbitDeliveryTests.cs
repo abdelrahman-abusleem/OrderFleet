@@ -4,7 +4,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Messaging;
 using OrderFleet.Application.Payments;

@@ -3,7 +3,6 @@ using Npgsql;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Orders;
 using OrderFleet.Domain.Orders;
-using OrderFleet.Infrastructure.Orders;
 using OrderFleet.Domain.Payments;
 using OrderFleet.Application.Payments;
 using OrderFleet.Application.Messaging;

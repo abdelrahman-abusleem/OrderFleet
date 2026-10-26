@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Routing;
 using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Api.Diagnostics;
