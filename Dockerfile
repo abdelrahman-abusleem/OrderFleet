@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0.403@sha256:afd0ccff9d306812a69ef0f47458376b6acb544ae866cfc4b8d28ff0eef35ea7 AS build
 WORKDIR /source
-COPY global.json Directory.Build.props OrderFleet.slnx ./
+COPY global.json Directory.Build.props Directory.Packages.props OrderFleet.slnx ./
 COPY src/OrderFleet.Domain/OrderFleet.Domain.csproj src/OrderFleet.Domain/
 COPY src/OrderFleet.Application/OrderFleet.Application.csproj src/OrderFleet.Application/
 COPY src/OrderFleet.Infrastructure/OrderFleet.Infrastructure.csproj src/OrderFleet.Infrastructure/
