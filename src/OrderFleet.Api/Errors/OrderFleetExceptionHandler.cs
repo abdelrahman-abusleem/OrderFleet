@@ -14,6 +14,11 @@ public sealed class OrderFleetExceptionHandler(
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            if (!context.Response.HasStarted) context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+            return true;
+        }
         var status = exception switch
         {
             DomainException or DbUpdateConcurrencyException or OperationConflictException => StatusCodes.Status409Conflict,
