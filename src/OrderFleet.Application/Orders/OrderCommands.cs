@@ -43,17 +43,20 @@ public sealed class OrderCommands(IOrderTransitionStore store, IRestaurantAccess
     public async Task CancelAsync(Guid id, Actor actor, CancellationToken cancellationToken)
     {
         var order = await store.LoadAsync(id, cancellationToken) ?? throw new ResourceNotFoundException();
-        var reason = CancellationReason.CustomerRequested;
-        if (actor.IsInRole(OrderFleetRoles.Admin)) reason = CancellationReason.AdminCancelled;
-        else if (actor.IsInRole(OrderFleetRoles.Customer) && order.CustomerId == actor.Id) { }
-        else if ((actor.IsInRole(OrderFleetRoles.RestaurantOwner) || actor.IsInRole(OrderFleetRoles.RestaurantStaff))
-            && await access.HasMembershipAsync(actor.Id, order.RestaurantId, cancellationToken))
-            reason = CancellationReason.RestaurantCancelled;
-        else throw new ResourceNotFoundException();
+        var reason = await ResolveCancellationReasonAsync(order, actor, cancellationToken);
         var now = clock.UtcNow;
         order.Cancel(reason, now);
         store.RecordAudit(actor.Id, order.Id, OrderAuditActions.Cancelled, now);
         await store.SaveAsync(cancellationToken);
+    }
+
+    private async Task<CancellationReason> ResolveCancellationReasonAsync(Order order, Actor actor, CancellationToken ct)
+    {
+        if (actor.IsInRole(OrderFleetRoles.Admin)) return CancellationReason.AdminCancelled;
+        if (actor.IsInRole(OrderFleetRoles.Customer) && order.CustomerId == actor.Id) return CancellationReason.CustomerRequested;
+        if ((actor.IsInRole(OrderFleetRoles.RestaurantOwner) || actor.IsInRole(OrderFleetRoles.RestaurantStaff))
+            && await access.HasMembershipAsync(actor.Id, order.RestaurantId, ct)) return CancellationReason.RestaurantCancelled;
+        throw new ResourceNotFoundException();
     }
 
     private async Task<Order> RestaurantOrderAsync(Guid id, Actor actor, CancellationToken cancellationToken)
