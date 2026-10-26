@@ -82,34 +82,50 @@ public sealed class Order
         ArgumentNullException.ThrowIfNull(limits);
 
         var itemList = items.ToList();
+        ValidateItemCollection(itemList, limits);
+        var totalAmount = CalculateTotal(itemList, limits);
 
-        if (itemList.Count == 0)
+        return new Order(
+            Guid.NewGuid(),
+            customerId,
+            restaurantId,
+            itemList,
+            totalAmount,
+            now);
+    }
+
+    private static void ValidateItemCollection(IReadOnlyList<OrderItem> items, OrderPricingLimits limits)
+    {
+        if (items.Count == 0)
             throw new ArgumentException(
                 "Order must contain at least one item.",
                 nameof(items));
 
-        if (itemList.Count > limits.MaxItemsPerOrder)
+        if (items.Count > limits.MaxItemsPerOrder)
             throw new ArgumentException(
                 $"Order cannot contain more than " +
                 $"{limits.MaxItemsPerOrder} items.",
                 nameof(items));
 
-        if (itemList.Any(item => item is null))
+        if (items.Any(item => item is null))
             throw new ArgumentException(
                 "Order items cannot contain null.",
                 nameof(items));
 
-        if (itemList.Select(item => item.ProductId)
-                .Distinct().Count() != itemList.Count)
+        if (items.Select(item => item.ProductId)
+                .Distinct().Count() != items.Count)
         {
             throw new ArgumentException(
                 "Order cannot contain the same product more than once.",
                 nameof(items));
         }
+    }
 
+    private static decimal CalculateTotal(IReadOnlyList<OrderItem> items, OrderPricingLimits limits)
+    {
         decimal totalAmount = 0m;
 
-        foreach (var item in itemList)
+        foreach (var item in items)
         {
             if (item.Quantity > limits.MaxQuantityPerItem)
             {
@@ -138,13 +154,7 @@ public sealed class Order
                 nameof(items));
         }
 
-        return new Order(
-            Guid.NewGuid(),
-            customerId,
-            restaurantId,
-            itemList,
-            totalAmount,
-            now);
+        return totalAmount;
     }
 
     public void Accept(DateTimeOffset now)
