@@ -41,6 +41,7 @@ builder.Services.AddOrderFleetOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<OrderFleetExceptionHandler>();
 builder.Services.AddOrderFleetIdentity(builder.Configuration);
+builder.Services.AddTrustedProxy(builder.Configuration);
 builder.Services.AddOrdering(builder.Configuration);
 builder.Services.AddCouriers(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
@@ -71,6 +72,7 @@ if (seedOnly)
     Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(manifest));
     return;
 }
+app.UseForwardedHeaders();
 app.UseMiddleware<SafeRequestLogging>();
 app.UseExceptionHandler();
 
