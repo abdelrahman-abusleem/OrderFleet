@@ -13,11 +13,11 @@ public sealed class Product
 
     private Product() { }
 
-    public static Product Create(Guid restaurantId, string name, decimal price)
+    public static Product Create(Guid restaurantId, string name, decimal price, bool available = true)
     {
         if (restaurantId == Guid.Empty) throw new ArgumentException("Restaurant is required.", nameof(restaurantId));
         var product = new Product { Id = Guid.NewGuid(), RestaurantId = restaurantId };
-        product.Update(name, price, true);
+        product.Update(name, price, available);
         return product;
     }
 

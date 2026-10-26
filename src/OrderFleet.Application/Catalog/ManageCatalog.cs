@@ -24,8 +24,7 @@ public sealed class ManageCatalog(ICatalogStore store, IRestaurantAccess access,
     {
         await AuthorizeAsync(actor, restaurantId, cancellationToken);
         ValidateProduct(name, price);
-        var product = Product.Create(restaurantId, name!, price);
-        product.Update(name!, price, available);
+        var product = Product.Create(restaurantId, name!, price, available);
         await store.CreateProductAsync(product, cancellationToken);
         return product.Id;
     }

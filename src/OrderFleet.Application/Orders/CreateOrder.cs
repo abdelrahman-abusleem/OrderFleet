@@ -24,7 +24,7 @@ public sealed class CreateOrder(IOrderCreationStore store, OrderingPolicy policy
         if (replay is not null) return Replay(replay, fingerprint);
         var ids = request.Items!.Select(x => x!.ProductId).ToArray();
         var catalog = await store.ReadCatalogAsync(request.RestaurantId, ids, cancellationToken);
-        if (!catalog.Active || catalog.Products.Count != ids.Length || catalog.Products.Any(x => !x.IsAvailable))
+        if (!catalog.HasProductsFromActiveRestaurant || catalog.Products.Count != ids.Length || catalog.Products.Any(x => !x.IsAvailable))
             throw new RequestValidationException("Restaurant and all requested products must be available.");
         var products = catalog.Products.ToDictionary(x => x.Id);
         var items = request.Items!.Select(x =>

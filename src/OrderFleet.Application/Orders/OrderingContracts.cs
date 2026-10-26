@@ -8,7 +8,7 @@ public sealed record OrderingPolicy(OrderPricingLimits Limits, TimeSpan Acceptan
 public sealed record RequestedItem(Guid ProductId, int Quantity);
 public sealed record CreateOrderRequest(Guid RestaurantId, IReadOnlyList<RequestedItem?>? Items, decimal? Latitude, decimal? Longitude);
 public sealed record OrderReplay(Guid OrderId, string Fingerprint);
-public sealed record CatalogSnapshot(bool Active, IReadOnlyList<Product> Products);
+public sealed record CatalogSnapshot(bool HasProductsFromActiveRestaurant, IReadOnlyList<Product> Products);
 public sealed record DeliveryDetails(decimal Latitude, decimal Longitude, DateTimeOffset AcceptanceDeadline);
 
 public interface IOrderCreationStore
