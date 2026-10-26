@@ -19,6 +19,9 @@ public sealed class StartupOptionsTests(PostgresFixture fixture) : IClassFixture
     [InlineData("Recovery:BatchSize", "0")]
     [InlineData("Recovery:MaxIdlePollMilliseconds", "99")]
     [InlineData("Recovery:MaxIdlePollMilliseconds", "30001")]
+    [InlineData("Cleanup:PublishedOutboxDays", "6")]
+    [InlineData("Cleanup:ResolvedRecoveryDays", "29")]
+    [InlineData("Cleanup:FinishedDispatchDays", "29")]
     [InlineData("Eta:AverageSpeedKmh", "0")]
     public async Task InvalidCriticalOptions_FailStartupWithoutEchoingSecrets(string option, string value)
     {

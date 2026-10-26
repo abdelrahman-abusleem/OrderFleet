@@ -359,3 +359,7 @@ Reviewed OrderConnections and the current queue/notification contract. Existing 
 ### Phase2 item2.10 — registration timing tradeoff
 
 Inspected IdentityAccounts.RegisterAsync duplicate/result/unique-conflict branches. Added the requested accepted-tradeoff note: generic Accepted avoids direct enumeration, but differing role/commit work can expose a timing signal. No constant-time or measurement claim; rate limits do not eliminate the issue. Documentation only, no identity/payment/business algorithm change. Existing Identity HTTP regressions passed in the40-case proxy group; full gate still required.
+
+### Phase2 review correction — retention minimums
+
+Review found retention startup validation allowed1-day settings even though D2 authorizes7/30/30-day ages. Three new invalid-option cases failed first (3 failed/14 passed), then validation was tightened to minimums7d published Outbox,30d resolved failures and30d finished dispatch attempts (maximum3650d each). Defaults unchanged. Strict Release build0 warnings/errors;25 startup/real cleanup/relay/contention tests passed. This supersedes item2.4's initial1..3650 option bounds; no row selection, protected identity contract or schema changed.
