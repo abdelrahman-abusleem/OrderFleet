@@ -13,6 +13,7 @@ public sealed class SafeLogPolicy : ILogEventEnricher
         "HTTP {RequestMethod} {RoutePattern} returned {StatusCode} in {ElapsedMilliseconds}ms",
         "Unhandled request failure {FailureType}; trace {TraceId}", "Request failed with {FailureType}; trace {TraceId}",
         "Outbox lease expired for {MessageId}", "Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}",
+        "Outbox completion deferred {MessageId} {FailureType}",
         "Outbox worker unavailable {FailureType}", "{Consumer} consumer unavailable {FailureType}",
         "Operational metrics unavailable {FailureType}",
         "Consumer {Consumer} failed {MessageId} {FailureCode} attempt {Attempt}"

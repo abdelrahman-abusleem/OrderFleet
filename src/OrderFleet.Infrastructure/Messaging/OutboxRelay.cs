@@ -18,10 +18,6 @@ public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, I
             try
             {
                 await publisher.PublishAsync(lease.Message, cancellationToken);
-                OrderFleetDiagnostics.OutboxPublished.Add(1);
-                OrderFleetDiagnostics.OutboxLag.Record(Math.Max(0, (clock.UtcNow - lease.Message.OccurredAtUtc).TotalSeconds));
-                if (!await store.CompleteAsync(lease, clock.UtcNow, cancellationToken))
-                    logger.LogWarning("Outbox lease expired for {MessageId}", lease.Message.MessageId);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception error)
@@ -30,6 +26,21 @@ public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, I
                 OrderFleetDiagnostics.OutboxRetries.Add(1, new KeyValuePair<string, object?>("reason", code));
                 await store.FailAsync(lease, clock.UtcNow, code, code == "InvalidEnvelope" ? 1 : settings.OutboxMaxAttempts, cancellationToken);
                 logger.LogWarning("Outbox publication failed {MessageId} {FailureCode} attempt {Attempt}", lease.Message.MessageId, code, lease.Attempts);
+                continue;
+            }
+            OrderFleetDiagnostics.OutboxPublished.Add(1);
+            OrderFleetDiagnostics.OutboxLag.Record(Math.Max(0, (clock.UtcNow - lease.Message.OccurredAtUtc).TotalSeconds));
+            try
+            {
+                if (!await store.CompleteAsync(lease, clock.UtcNow, cancellationToken))
+                    logger.LogWarning("Outbox lease expired for {MessageId}", lease.Message.MessageId);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception error)
+            {
+                // Publication is confirmed. Leave this lease unchanged for expiry;
+                // a later delivery may duplicate the fact, so consumers use Inbox.
+                logger.LogWarning("Outbox completion deferred {MessageId} {FailureType}", lease.Message.MessageId, error.GetType().Name);
             }
         }
         return leases.Count;
