@@ -175,3 +175,7 @@ Named fixed vocabularies preserve stored/wire strings; seven actual PostgreSQL d
 ### Hardening Gate3 — VERIFIED
 
 Groups3A–3D complete under approved exceptions. Full Release solution test run520 passed (260 Domain+260 Integration),0 failed/skipped. All slice builds0 warnings/errors; final isolated style/projection rebuild260 Domain+20 real clock/GPS tests passed; full formatter recheck exit0 after correcting one indentation and two unused imports. Actual query-order tests passed before/after effects extraction; lock helper preserves tracked-root CAS and sorted ordering; nearest-courier SQL compared exactly; real mandatory-return test proves original remains unacked and redelivers after reconnect. Role IDs/stamps and currency CHECK produce no EF drift; no Phase3 schema/package change. Exact commands and rejected speculative changes recorded in07_PROGRESS_AND_HANDOFF.md. Final clean-source/migration/smoke gate remains Phase5.
+
+### Hardening Gate4 — VERIFIED
+
+Documentation diff reviewed: README settings/limitations/test paths, ADR-027 (avoids duplicate014), changelog and all-item matrix; current type/method references updated. Local README/ADR links and diff whitespace pass. Strict Release -warnaserror build0 warnings/errors;260 Domain passed. No runtime/schema/package change; final regression, fresh migration and owned Compose smoke remain Gate5 work.

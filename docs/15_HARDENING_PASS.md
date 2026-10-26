@@ -1,5 +1,7 @@
 # Hardening pass — observed evidence (2026-10-26)
 
+Current checkpoint: Gate3 VERIFIED,520 passed (260 Domain+260 Integration),0 failed/skipped; Phase4 documents the result. Phase5 final regression/fresh migration/Compose smoke is pending. Earlier blocked/expected-red checkpoints below are historical evidence and are superseded only by their explicit later reruns. See the acceptance matrix at the end.
+
 This pass follows the owner's attached Hardening & Clean-Code prompt. Its branch and commit conventions supersede the older phase conventions for this pass only. Scope is unchanged. Phase 0 started from clean commit 19b010b.
 
 ## Phase 0 — baseline and inventory
@@ -94,3 +96,52 @@ All Phase2 items complete under accepted D1–D4/section3.7; no additional appro
 ## Gate3 — VERIFIED
 
 Groups3A–3D complete in separate buildable commits on hardening/p3-clean-code. Full520 passed (260 Domain+260 Integration),0 failed/skipped, strict Release0 warnings/errors. Full formatter exit0 after isolated indentation/import correction; final projection/clock build plus260 Domain/20 targeted real cases green. Query-order characterizations, exact moved-body/SQL comparison, lifetime test, multirole authority cases, product availability and actual failed-retry-publication redelivery augment existing regressions. No Phase3 migration/package change; role/currency mapping drift clean. Rejected changes and approved ArgumentException/IClock exceptions are recorded in07_PROGRESS_AND_HANDOFF.md. Final migration and fresh Compose smoke are still pending Phase5, not inferred from unit/integration success.
+
+## Current acceptance matrix
+
+Status at Gate4: done unless an explicit approved alternative/mismatch is named. Phase5 stays pending until executed. Slice commands and actual failures/corrections are in07_PROGRESS_AND_HANDOFF.md; original test assertions/drivers remain preserved.
+
+| Item | Status and evidence |
+|---|---|
+| 0.1 baseline | Done:431 initially passed; Docker outage/recovery recorded,432 post-hygiene green. |
+| 0.2 inventory | Done: initial matrix above; actual parallel claims/fences and stale-sequence consumers verified. Strict broker arrival/publication ordering across concurrent relays is not an established guarantee and was not invented. |
+| 0.3 hygiene | Done: ignores verified, no tracked artifacts, same24 package versions centralized, SDK/build/style metadata, typo failed first then passed. |
+| 1.1 capture/cancel | Done: two deterministic barrier interleavings, provider/local/archive/Outbox/Inbox/compensation assertions. |
+| 1.2 GPS replay | Done: identical/different/older/newer cases plus event counts and both representations. |
+| 1.3 relay classification | Done: real confirmed publish with injected Complete failure and duplicate financial archive replay. |
+| 1.4 request abort | Done: direct handler driver plus actual API499 characterization; unrelated cancellation remains500. |
+| 1.5 role seeds | Done: all fixed IDs/names/stamps checked independently before/after map extraction. |
+| 1.6 hub privacy | Done: actual negotiate/WebSocket and rejected query tokens absent from captured logs. |
+| 2.1 relay/batch/backoff | Done: separated completion failures, validated batch/lease budget, deterministic injectable jitter, explicit reconnect loops. |
+| 2.2 GPS throttle | Done:25m OR10s, active assignment only, durable fence/checkpoint, transactional rollback and boundaries. |
+| 2.3 replay no-op | Done: same normalized observation returns without Save/event; conflict/order checks retained. |
+| 2.4 cleanup | Done under D2: only three approved technical tables, strict7/30/30 floors, bounded deletes, consumption/compensation/reopened-failure guards. Request/Inbox expiration deliberately excluded by owner decision. |
+| 2.5 cancellation handler | Done: aborted requests produce no500/error/body; unrelated cancellations unchanged. |
+| 2.6 recovery | Done: existing interval retained, idle cap10s/reset on work, actual six-query100k-order/job before/after plans; only measured partial payment index added. |
+| 2.7 missing courier | Done under D3: retain standalone leniency, safe OrderId warning, no throw. |
+| 2.8 proxy limits | Done: disabled default, configured IP/CIDR trust, one hop, no/0, real spoofing/partition/startup tests. |
+| 2.9 SignalR | Done: existing single-instance limitation extended with concrete backplane/affinity/registry/fanout acceptance; no backplane implemented. |
+| 2.10 registration timing | Done: accepted tradeoff documented; no identity behavior change. |
+| 3.1 vocabularies | Done: constants retain strings,7 PostgreSQL round trips, no model drift. Broad replacement script rejected before execution; explicit reviewed patches used. |
+| 3.2 exception placement | Done: shared Domain.Common, same implementation/exact assertions/HTTP mapping. |
+| 3.3 order locks | Done: shared load/xmin and tracked-root lock-only helpers, identical SQL, existing sorted/actor-first order. |
+| 3.4 transition effects | Done: named internal collaborator, same context/transaction/save ownership,3 actual courier→job→history characterizations and existing multi-fact rollback. |
+| 3.5 dispatch structure | Done: SQL compared to baseline, candidate claim isolated, retry versus reservation staging named. |
+| 3.6 capabilities | Done: creation/transition/query ports share one scoped EF store; lifetime isolation tested. |
+| 3.7 validation | Done: private collection/pricing helpers; dedicated exception deliberately skipped under approved section3.7, exact ArgumentException/mapping retained. |
+| 3.8 command structure | Done: explicit cancellation role priority with5 actual HTTP cases. Acceptance rewrite skipped: actual source already has clear before/after-capture deadline/compensation logic. |
+| 3.9 broker processor | Done: handling/retry/ACK steps, explicit hosted worker names; compatible old direct-call overload. Inbox stays in atomic handlers. Real failed mandatory retry copy redelivers original. |
+| 3.10 ETA composition | Done: unchanged route/auth/response moved; actual ETA/realtime/full journey/privacy cases green. |
+| 3.11 catalog | Done: initial availability once, default preserved,2 new Domain cases; honest internal snapshot flag with unchanged API error outcome. |
+| 3.12 stable role map | Done: byte-identical GUIDs/stamps, no seed migration. |
+| 3.13 clock registration | Done: TimeProvider registration in composition, original lifetime/override tested before/after. |
+| 3.14 clock abstraction | Done under D4: retain documented IClock wrapper; broad replacement/testing package deliberately excluded. |
+| 3.15 projection | Done: intentional spatial projection comment/decision, new-in-pass equality/replay/stale-writer transaction tests; neither representation removed. |
+| 4.1 README | Done: tests, cleanup/settings, retention, GPS, mock provider, single-instance realtime and deep OFFSET limitations. |
+| 4.2 ADR | Done: ADR-027 used because014 already defines monetary rules; no duplicate identifier. |
+| 4.3 docs/matrix | Done: current test matrix, progress/quality/learning records and renamed current references updated. Historical checkpoint evidence retained. |
+| 4.4 changelog | Done: concise hardening entry. |
+| 5 restore/build/format/tests | Pending final execution; Gate3 had520 green and full format0. |
+| 5 drift/migrations | Pending final CLI/fresh chain check; prior drift checks clean and Testcontainers apply19 migrations. |
+| 5 Compose smoke | Pending fresh owned stack; expected health routes are /health/live and /health/ready, not nonexistent /health. |
+| 5 Git/report | Pending final branch/evidence commit; no push/merge/PR/deployment performed. |
