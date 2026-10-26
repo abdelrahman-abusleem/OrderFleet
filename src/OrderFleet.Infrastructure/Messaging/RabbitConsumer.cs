@@ -43,7 +43,7 @@ public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScop
                 timeout.CancelAfter(TimeSpan.FromSeconds(30));
                 using var scope = scopes.CreateScope();
                 var handler = resolve(scope.ServiceProvider);
-                await processor.ProcessAsync(channel, queue, delivery.DeliveryTag, delivery.BasicProperties,
+                await processor.ProcessAsync(channel, queue, worker, delivery.DeliveryTag, delivery.BasicProperties,
                     delivery.Body, handler, timeout.Token);
                 progress.Success(worker);
             }
