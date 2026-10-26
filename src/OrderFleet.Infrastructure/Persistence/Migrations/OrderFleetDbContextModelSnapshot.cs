@@ -529,6 +529,15 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CourierId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("LastEventAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("LastEventAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Point>("LastEventLocation")
+                        .HasColumnType("geography(Point,4326)");
+
                     b.Property<Point>("Location")
                         .IsRequired()
                         .HasColumnType("geography(Point,4326)");
@@ -544,7 +553,10 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ObservedAt");
 
-                    b.ToTable("CourierPositions", (string)null);
+                    b.ToTable("CourierPositions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CourierPosition_Emission", "(\"LastEventLocation\" IS NULL AND \"LastEventAtUtc\" IS NULL AND \"LastEventAssignmentId\" IS NULL) OR (\"LastEventLocation\" IS NOT NULL AND \"LastEventAtUtc\" IS NOT NULL AND \"LastEventAssignmentId\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("OrderFleet.Infrastructure.Dispatch.CourierAssignment", b =>

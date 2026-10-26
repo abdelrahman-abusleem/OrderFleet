@@ -7,10 +7,12 @@ using OrderFleet.Domain.Couriers;
 using OrderFleet.Application.Clock;
 using OrderFleet.Application.Messaging;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
+using OrderFleet.Infrastructure.Couriers;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
-public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock) : ICourierStore
+public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock, IOptions<CourierLocationEventOptions>? events = null) : ICourierStore
 {
     public Task<Courier?> FindAsync(Guid id, CancellationToken cancellationToken) => context.Couriers.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
     public void Add(Courier courier) => context.Couriers.Add(courier);
@@ -18,23 +20,41 @@ public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock) : 
     {
         context.ChangeTracker.DetectChanges();
         var observed = context.Entry(courier).Property(x => x.LocationObservedAt).IsModified;
+        CourierPosition? position = null;
         if (courier.LocationObservedAt.HasValue)
         {
-            var position = await context.CourierPositions.SingleOrDefaultAsync(x => x.CourierId == courier.Id, cancellationToken);
-            if (position is null) context.CourierPositions.Add(new(courier));
+            position = await context.CourierPositions.SingleOrDefaultAsync(x => x.CourierId == courier.Id, cancellationToken);
+            if (position is null) { position = new(courier); context.CourierPositions.Add(position); }
             else position.Update(courier);
         }
-        if (observed)
+        var now = clock.UtcNow;
+        if (observed && position is not null && await ShouldEmitAsync(courier, position, now, cancellationToken))
+        {
+            position.RecordEmission(courier.AssignmentId!.Value, now);
             context.OutboxMessages.Add(new(new IntegrationEvent(Guid.NewGuid(), "courier.location-updated.v1", 1,
-                clock.UtcNow, courier.Id, System.Diagnostics.Activity.Current?.TraceId.ToString(),
+                now, courier.Id, System.Diagnostics.Activity.Current?.TraceId.ToString(),
                 JsonSerializer.Serialize(new { courierId = courier.Id, observedAt = courier.LocationObservedAt }),
                 TraceParent: OrderFleet.Application.Diagnostics.OrderFleetDiagnostics.CurrentTraceParent)));
+        }
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException
         { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Couriers" or "PK_CourierPositions" })
         {
             throw new OperationConflictException("Courier profile changed concurrently; refresh before retrying.");
         }
+    }
+
+    private async Task<bool> ShouldEmitAsync(Courier courier, CourierPosition position, DateTimeOffset now, CancellationToken ct)
+    {
+        if (!courier.AssignmentId.HasValue || !courier.OrderId.HasValue) return false;
+        if (position.LastEventAssignmentId != courier.AssignmentId || position.LastEventAtUtc is null || position.LastEventLocation is null) return true;
+        var policy = events?.Value ?? new CourierLocationEventOptions();
+        if (now - position.LastEventAtUtc.Value >= TimeSpan.FromSeconds(policy.MinimumIntervalSeconds)) return true;
+        var current = position.Location;
+        // Geography distance is evaluated by PostGIS in metres, not NTS degrees.
+        var distance = await context.CourierPositions.Where(x => x.CourierId == courier.Id)
+            .Select(x => x.LastEventLocation!.Distance(current)).SingleAsync(ct);
+        return distance >= policy.MinimumDistanceMeters;
     }
 
     public async Task<IReadOnlyList<NearbyCourier>> NearbyAsync(decimal latitude, decimal longitude, double radiusMeters,

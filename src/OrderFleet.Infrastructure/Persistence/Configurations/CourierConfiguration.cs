@@ -30,10 +30,12 @@ public sealed class CourierPositionConfiguration : IEntityTypeConfiguration<Cour
 {
     public void Configure(EntityTypeBuilder<CourierPosition> builder)
     {
-        builder.ToTable("CourierPositions");
+        builder.ToTable("CourierPositions", table => table.HasCheckConstraint("CK_CourierPosition_Emission",
+            "(\"LastEventLocation\" IS NULL AND \"LastEventAtUtc\" IS NULL AND \"LastEventAssignmentId\" IS NULL) OR (\"LastEventLocation\" IS NOT NULL AND \"LastEventAtUtc\" IS NOT NULL AND \"LastEventAssignmentId\" IS NOT NULL)"));
         builder.HasKey(x => x.CourierId);
         builder.HasOne<Courier>().WithOne().HasForeignKey<CourierPosition>(x => x.CourierId);
         builder.Property(x => x.Location).HasColumnType("geography(Point,4326)").IsRequired();
+        builder.Property(x => x.LastEventLocation).HasColumnType("geography(Point,4326)");
         builder.HasIndex(x => x.Location).HasMethod("gist");
         builder.HasIndex(x => x.ObservedAt);
     }

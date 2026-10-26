@@ -235,3 +235,7 @@ These clarify this pass without replacing or duplicating existing ADR identifier
 ### Hardening implementation note — bounded retries
 
 Outbox batch defaults preserve5; range1..100 also constrained by publish timeout and lease budget at startup. One injectable Infrastructure retry policy supplies0..20% jitter with hard caps (Outbox300s,worker30s); tests control randomness and actual persisted deadlines. This technical scheduling change does not alter financial/business effects or at-least-once/fencing contracts. Consumer termination uses explicit failure state, not exception control flow. Configuration is bound lazily via IOptions to preserve final host overrides. No packages or schema changes.
+
+### Hardening implementation note — GPS emission checkpoint
+
+Persist the last emitted point/time/fence on CourierPosition rather than using an in-memory timer or querying unbounded event JSON. These are private spatial projection/checkpoint data, never public payload fields. A new fence starts an emission cycle. Updating the checkpoint, profile, projection and Outbox in the same existing transaction preserves multi-process xmin rejection and rollback. Three nullable columns/check are an explicit additive migration; historical rows need no fabricated timestamp. Default25m/10s policy and safe bounds are startup-validated. PostGIS evaluates movement in metres, including equality. Detailed tests/migration evidence are in07_PROGRESS_AND_HANDOFF.md.
