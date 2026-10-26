@@ -155,3 +155,7 @@ PASS: strict Release build (`--no-restore -m:1 -warnaserror`) 0 warnings/errors;
 ### New hardening pass — Phase 0 blocked (2026-10-26)
 
 Initial full baseline431 passed (257 Domain+174 Integration),0 failed/skipped; restore/build/formatter passed. Requested message correction had a failing-first new HTTP test then Operations7/7 passed. Hygiene build0 warnings/errors, full formatting verification and Domain257 passed. Post-hygiene Integration run had19 passed/156 failed at Docker fixture startup; independent Docker version/ps probes return HTTP500, including API1.41. Gate is BLOCKED, not passed. Do not proceed to Phase1 or claim432 green until real infrastructure recovers and all tests rerun. No tests skipped/weakened; no container/data deletion/restart without owner permission.15_HARDENING_PASS.md inventories coverage and decisions.
+
+### Hardening Gate0 recovery — 2026-10-26
+
+VERIFIED after a single explicitly authorized normal Docker Desktop restart. No persistent service failed automatic recovery; no existing container/image/volume/data deletion or manual state changes. Full real-infrastructure recheck432 passed (257 Domain+175 Integration),0 failed/skipped, exit0. The earlier Docker HTTP500 failures remain documented; they are not reclassified as passes. Phase0 restore/build0 warnings/errors/full formatter/unchanged dependency graph/inventory complete. No schema changes. Phase1 begins with tests only; expected-red drivers must be reported separately from passing regressions.

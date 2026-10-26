@@ -54,3 +54,11 @@ Later gates, exact commands, expected-failing drivers and item-by-item completio
 - Schema changes: none; no EF mappings or migrations changed. Direct package versions (24) and resolved package-library names/versions in all6 projects match baseline.
 - Decisions needed: Docker Desktop recovery interrupts unrelated containers, so owner permission or owner-operated recovery is required. Later D1–D4 and the section3.7 test/exception contradiction remain pending their applicable operations.
 - Not done/deferred: Phase0 full integration recheck and gate completion BLOCKED on Docker. Phases1–5 NOT_STARTED; no driver test is falsely marked passed or skipped. No push, merge, PR, deployment, container reset or data deletion.
+
+## Docker recovery and Gate 0 — verified
+
+Owner authorized one normal Docker Desktop restart, explicitly allowing last-known service names because API HTTP500 prevented live pre-restart running state/health/restart-policy verification. Recorded this limitation before restart in ignored local `.tools/docker-restart-precheck.json`. Executed `docker desktop restart --timeout 120` exactly once: exit0. No Windows reboot, container reset/recreation, cleanup/prune, volume/image/data deletion or manual service start/stop.
+
+`docker version --format '{{.Server.Version}}'` returned29.8.2. Read-only full inventory and per-container state/policy inspection found orderfleet-postgres,meetwise-postgres,meetwise-redis automatically running/healthy with unless-stopped policies, matching their last-known healthy states. All24 exited255/no-restart containers were confirmed org.testcontainers=true (PostGIS/RabbitMQ); left untouched. No known persistent service failed to recover. Ignored local before/after evidence retained.
+
+Resumed `dotnet test OrderFleet.slnx -c Release --no-build --no-restore -m:1 --logger 'console;verbosity=minimal'`: exit0,257 Domain+175 Integration=432 passed,0 failed/skipped; Integration duration1m13s. This supersedes the blocked post-hygiene run without hiding that failure. All Phase0 hygiene/build/format and real-infrastructure verification now pass. No schema changes. Branch hardening/p0-baseline commits4edc628,bf777db,11f0c6f plus this evidence update. Gate0 VERIFIED; proceed to Phase1 tests only. D1–D4 and the section3.7 contract contradiction remain for applicable later operations.
