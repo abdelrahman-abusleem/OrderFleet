@@ -351,3 +351,7 @@ Approved D3 implemented without changing legacy persistence behavior. New releas
 ### Phase2 item2.8 — trusted proxy rate-limit partitions
 
 Nine HTTP/configuration tests were written first:6 failed/3 passed, proving absent trust binding/validation and shared trusted-proxy partitions. Implemented disabled-by-default, validated explicit proxy/network arrays, /0 rejection, one-hop limit and middleware before logging/redirect/auth/rate limiting. .NET10 KnownIPNetworks API verified against the installed reference documentation; resolved the IPNetwork namespace ambiguity without using the obsolete type. No implicit trust-all or loopback list. Existing rate policies unchanged. Release build0 warnings/errors; proxy/Identity/health/startup40 tests passed,0 failed/skipped. Diff reviewed; security doc gives environment-key examples and deployment obligations. No schema change. Full Gate2 remains pending documentation items2.9/2.10 and full suite.
+
+### Phase2 item2.9 — concrete realtime scale-out boundary
+
+Reviewed OrderConnections and the current queue/notification contract. Existing README/ADR-022 already state single-instance realtime; added the concrete Redis/equivalent upgrade path, negotiated-transport affinity, and registry/fanout requirement with multi-replica security/recovery acceptance. A backplane alone cannot distribute local authorization/subscription state or turn a competing realtime queue into broadcast. Documentation only; no service, package, behavior, schema or test change. Existing realtime tests remain required in the upcoming full gate.
