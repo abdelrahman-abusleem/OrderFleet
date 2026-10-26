@@ -7,9 +7,7 @@ using OrderFleet.Api.Endpoints;
 using System.Text.Json.Serialization;
 using OrderFleet.Api.Configuration;
 using OrderFleet.Api.Realtime;
-using OrderFleet.Application.Eta;
 using OrderFleet.Application.Identity;
-using System.Security.Claims;
 using OrderFleet.Api.Diagnostics;
 
 if (args.Length == 1 && args[0] == "--health-check")
@@ -96,8 +94,7 @@ app.MapHealth();
 app.MapHub<OrdersHub>("/hubs/orders", options =>
     { options.CloseOnAuthenticationExpiration = true; options.AllowStatefulReconnects = false; })
     .RequireAuthorization(policy => policy.RequireRole(OrderFleetRoles.All));
-app.MapGet("/api/v1/orders/{id:guid}/eta", async (Guid id, ClaimsPrincipal principal, GetEta query, CancellationToken ct) =>
-    Results.Ok(await query.ExecuteAsync(id, principal.ToActor(), ct))).RequireAuthorization();
+app.MapEtaEndpoints();
 
 app.Run();
 
