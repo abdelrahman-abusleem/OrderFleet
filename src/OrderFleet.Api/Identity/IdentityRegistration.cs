@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using OrderFleet.Application.Identity;
 using OrderFleet.Application.Orders;
@@ -31,7 +34,7 @@ public static class IdentityRegistration
         AddJwtAuthentication(services, configuration);
         services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser().Build());
-        AddRequestRateLimiting(services);
+        AddRequestRateLimiting(services, configuration);
         return services;
     }
 
@@ -49,10 +52,30 @@ public static class IdentityRegistration
             .Configure<IOptions<JwtOptions>>((options, configured) => ConfigureBearer(options, configured.Value));
     }
 
-    private static void AddRequestRateLimiting(IServiceCollection services)
+    private static void AddRequestRateLimiting(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddRateLimiter(options =>
+        services.AddOptions<RequestLimitOptions>().Bind(configuration.GetSection("RequestLimits"))
+            .Validate(value => value.IsValid(), "Invalid request rate limits.").ValidateOnStart();
+        services.AddRateLimiter(_ => { });
+        services.AddOptions<RateLimiterOptions>().Configure<IOptions<RequestLimitOptions>>((options, configured) =>
         {
+            var limits = configured.Value;
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            {
+                var path = context.Request.Path;
+                if ((!path.StartsWithSegments("/api/v1") && !path.StartsWithSegments("/hubs/orders"))
+                    || path == "/api/v1/auth/login" || path == "/api/v1/auth/register")
+                    return RateLimitPartition.GetNoLimiter("other");
+                var read = HttpMethods.IsGet(context.Request.Method) || path.StartsWithSegments("/hubs/orders");
+                var create = HttpMethods.IsPost(context.Request.Method) && path.Value?.TrimEnd('/') == "/api/v1/orders";
+                var bucket = create ? "create" : read ? "read" : "write";
+                var actor = context.User.FindFirst("sub")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(bucket + ":" + actor, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = create ? limits.CreatePerMinute : read ? limits.ReadPerMinute : limits.WritePerMinute,
+                    Window = TimeSpan.FromMinutes(1), QueueLimit = 0
+                });
+            });
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -131,11 +154,25 @@ public static class IdentityRegistration
                         ProblemDetails = new() { Status = 403, Title = "Access denied." }
                     });
             },
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
                 if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var id) || id == Guid.Empty)
+                {
                     context.Fail("Invalid subject.");
-                return Task.CompletedTask;
+                    return;
+                }
+                if (context.Principal!.IsInRole(OrderFleetRoles.Admin))
+                {
+                    var database = context.HttpContext.RequestServices.GetRequiredService<OrderFleetDbContext>();
+                    var current = await (from grant in database.UserRoles.AsNoTracking()
+                                         join role in database.Roles on grant.RoleId equals role.Id
+                                         where grant.UserId == id && role.Name == OrderFleetRoles.Admin
+                                         select grant.UserId).AnyAsync(context.HttpContext.RequestAborted);
+                    if (!current)
+                        foreach (var identity in context.Principal.Identities.OfType<ClaimsIdentity>())
+                            foreach (var claim in identity.FindAll("role").Where(claim => claim.Value == OrderFleetRoles.Admin).ToArray())
+                                identity.RemoveClaim(claim);
+                }
             }
         };
     }

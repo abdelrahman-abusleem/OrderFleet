@@ -27,7 +27,7 @@ public sealed class OutboxOutageTests(PostgresFixture postgres, RabbitFixture ra
         var settings = new RabbitOptions
         {
             Uri = rabbit.ConnectionString, Prefix = "outage-" + Guid.NewGuid().ToString("N"),
-            OutboxMaxAttempts = 2, PublishTimeoutSeconds = 1
+            OutboxMaxAttempts = 10, PublishTimeoutSeconds = 1
         };
         var store = new PostgresOutboxStore(new TestContextFactory(postgres));
         await rabbit.StopAsync();
@@ -35,7 +35,7 @@ public sealed class OutboxOutageTests(PostgresFixture postgres, RabbitFixture ra
         {
             await using var publisher = new RabbitEventPublisher(Options.Create(settings));
             var relay = new OutboxRelay(store, publisher, new SystemClock(clock), Options.Create(settings), NullLogger<OutboxRelay>.Instance);
-            for (var attempt = 1; attempt <= 5; attempt++)
+            for (var attempt = 1; attempt <= 15; attempt++)
             {
                 Assert.Equal(1, await relay.RunBatchAsync(timeout.Token));
                 await using var verify = postgres.CreateContext();
@@ -60,7 +60,7 @@ public sealed class OutboxOutageTests(PostgresFixture postgres, RabbitFixture ra
         var published = await final.OutboxMessages.SingleAsync(x => x.Id == fact.MessageId, timeout.Token);
         Assert.NotNull(published.PublishedAtUtc);
         Assert.Null(published.DeadLetteredAtUtc);
-        Assert.Equal(6, published.Attempts);
+        Assert.Equal(16, published.Attempts);
         await using var session = await RabbitSession.OpenAsync(settings, timeout.Token);
         var delivery = await session.Channel.BasicGetAsync(RabbitTopology.Financial(settings.Prefix), false, timeout.Token);
         Assert.NotNull(delivery);

@@ -380,6 +380,14 @@ namespace OrderFleet.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"CourierId\" IS NOT NULL AND \"Status\" IN ('Assigned', 'PickedUp')");
 
+                    b.HasIndex("Id")
+                        .HasDatabaseName("IX_Orders_CreatedRecovery")
+                        .HasFilter("\"Status\" = 'Created'");
+
+                    b.HasIndex("AcceptedAt", "Id")
+                        .HasDatabaseName("IX_Orders_AcceptedRecovery")
+                        .HasFilter("\"Status\" = 'Accepted'");
+
                     b.HasIndex("CustomerId", "CreatedAt", "Id");
 
                     b.HasIndex("RestaurantId", "Status", "CreatedAt");
