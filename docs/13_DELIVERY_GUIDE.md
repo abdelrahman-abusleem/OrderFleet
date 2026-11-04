@@ -40,7 +40,7 @@ Create201 returns `{ "id": "<order-guid>" }`; its GET shows status Created, curr
 
 Use owner login to POST `/api/v1/orders/{id}/accept` (no body). It captures the stable provider operation before accepting; successful204. Permanent decline409 is replayed; confirmed transient503 can retry before original deadline; unknown503 reconciles provider status/idempotency rather than charging again. The worker eventually assigns a fresh available courier. Courier login sends PUT `/api/v1/couriers/me/availability` with `{ "isAvailable": true }`, PUT `/location` with latitude,longitude,observedAt UTC, then POST `/orders/{id}/pickup` and `/deliver` with `{ "assignmentId": "<current-fence>" }`. Repeated terminal operations409. A different actor sees404 for private resources or403 for forbidden roles. The complete executable version is `scripts/Invoke-Demo.ps1`.
 
-Public registration grants Customer only. Restaurant owner/staff/admin/courier privileges come from controlled identity provisioning, not request bodies. Tokens have issuer/audience/signature/algorithm/lifetime validation,15-minute default life and30s skew; no refresh token. Restaurant membership is live; ordinary role grants follow the token-expiry policy. Operations and realtime additionally recheck current DB roles. Credential endpoints allow10 requests/IP/min and lock accounts after5 failed attempts.
+Public registration grants Customer only. Restaurant owner/staff/admin/courier privileges come from controlled identity provisioning, not request bodies. Tokens have issuer/audience/signature/algorithm/lifetime validation,15-minute default life and30s skew; no refresh token. Restaurant membership is live; privileged Admin/Owner/Staff/Courier claims are intersected with current grants on every request. New grants require a fresh token. Operations, identity administration and realtime additionally recheck authoritative scope. Credential endpoints allow10 requests/IP/min and lock accounts after5 failed attempts.
 
 ## System boundaries
 
@@ -146,7 +146,7 @@ Single API realtime is a deliberate tested boundary. Multiple business workers a
 
 ## Review and evidence
 
-Full phase evidence and failures corrected are in `07_PROGRESS_AND_HANDOFF.md`; named tests are executable evidence, not a substitute for a human review. GitHub workflow is defined but not remotely executed because no push is authorized. Patches, migration target safety, concurrency, privacy, failure recovery and dependency direction were adversarially self-reviewed. Human owner review/merge is still pending; no deployment or production SLA/compliance claim is made. Legacy populated assignments require reviewed history/deadline reconciliation before upgrade; developer DB was preserved unchanged. The solution includes mandatory SignalR, ETA and OpenTelemetry; none were silently deferred.
+Current findings, executed commands and verification status are in [release verification](16_RELEASE_VERIFICATION.md). Named tests demonstrate specific behavior; they do not certify production scale or operational readiness. Legacy populated assignments require reviewed history/deadline reconciliation before upgrade. No deployment or production SLA/compliance claim is made.
 
 ## Financial dead letters and backlog handling
 
@@ -154,4 +154,18 @@ The healthy financial queue now drains automatically. An outage can build durabl
 
 After fixing the cause, an authorized broker operator can replay the original retained financial envelope to the financial main queue with its original MessageId/Type and metadata: obtain a publisher confirm before ACK/removing the dead-letter source. Preserve IDs and amounts; never call Capture/Refund to manufacture a missing audit projection. The archive dedupes an already committed fact. For a malformed source, verify the authoritative retained Outbox/provider evidence before a reviewed repair; conflicting archived content must never be overwritten. There is intentionally no arbitrary-payload HTTP replay endpoint. Do not dump dead-letter bodies to unrestricted logs, purge queues, or truncate audit/Inbox history as recovery. Retention, capacity alerts and human resolution of poison remain deliberate operational responsibilities.
 
-The review findings, changed files, exact test/Compose/migration results and remote workflow instructions are in [14_HARDENING_REVIEW.md](14_HARDENING_REVIEW.md).
+See [release verification](16_RELEASE_VERIFICATION.md) for current local and remote evidence.
+
+## Browser, admission and deployment settings
+
+Cors__AllowedOrigins__0 configures one exact approved frontend origin; the default empty list grants no cross-origin access. HTTPS origins are required outside Development/Testing. Same-origin clients work without CORS grants. WebSocket Origin is independently checked; no wildcard/credential combination is supported.
+
+RequestLimits__CreatePerMinute/WritePerMinute/ReadPerMinute/HubPerMinute default10/60/120/60, validated1..10000. Authenticated partitions are actor-based; anonymous clients use the trusted client IP. Hub calls share one budget across connections. These process-local controls do not replace deployment edge limits. Existing credential10/IP/min and health60/IP/min limits remain.
+
+CourierLocationEvents__MinimumDistanceMeters and MinimumIntervalSeconds default25 and10 (validated1..5000m and1..300s). Persist every accepted observation in both representations; emit only during an active assignment when movement OR elapsed threshold is met. Identical replay is a no-op. Recovery__MaxIdlePollMilliseconds defaults10000 (maximum30000); work resets idle backoff. Created/Accepted partial indexes support historical recovery selection; exact cancellation counts/scans still need workload-specific capacity validation.
+
+Cleanup defaults and safety are in [security](06_SECURITY_AND_RELIABILITY.md). Replay/Inbox identities remain indefinite. Deletion never includes unresolved work, payments, orders, immutable financial/order audit or financial operation identities.
+
+Outside Development/Testing, set Demo__Enabled=true only for an explicitly acknowledged mock demonstration, set exact AllowedHosts and an HTTPS Jwt__Issuer, and configure TLS termination and explicit proxy trust. X-OrderFleet-Payments labels mock processing. HSTS/HTTPS redirect are enabled outside local/test; OpenAPI is not exposed there. A real payment provider is not implemented.
+
+Identity administration uses the [restricted API policy](11_API_DATA_CONTRACTS.md), with ordered user/restaurant locks and audit. Owner+current membership scopes restaurant authority. Roles are global; no per-membership role column exists. Non-public administrative provisioning must preserve the same locking discipline. No HTTP Admin-role administration exists.

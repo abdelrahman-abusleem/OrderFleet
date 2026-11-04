@@ -1,94 +1,39 @@
-# Security and distributed reliability requirements
+# Security and reliability
 
-## Threat model and boundary checklist
+## Identity and resource access
 
-**Attackers:** unauthenticated clients, authorized customers trying foreign orders, rogue restaurant/courier role access, replaying clients, compromised stale background worker, malformed broker message and inadvertent operator mistakes. Protect order values, actor authority, courier locations, auth secrets and operational integrity.
+JWT validation requires HS256, signature, issuer, audience, expiry and a nonempty GUID subject. Signing material must contain at least32 bytes; token lifetime is1..60 minutes (default15) with30 seconds skew. No refresh-token service is implemented. Public registration grants Customer only; login uses ASP.NET Core Identity password hashing, five-failure lockout and a10/IP/minute credential limit.
 
-- Every command derives actor IDs from verified claims/authorization context, not from trusted request body values. Customer may propose product IDs/quantities, never final catalog price, payment status, accepted restaurant/courier IDs or bypass statuses.
-- Match ownership at both route/API and use-case level where needed; resource membership changes may invalidate access. Don't rely on SignalR group name as authorization.
-- Validate all inputs (length, quantity, currency, decimal scale, latitude/longitude, timestamps, pagination, idempotency key limits); normalize where appropriate; avoid exception-driven validation for expected user errors.
-- Use parameterized SQL or safe EF queries; audit any raw SQL and transaction semantics. Bound listing/search results. Rate-limit login, sensitive commands and location updates pragmatically.
-- JWT: validate signing algorithm/key, issuer, audience, lifetime/clock skew; strictly scope permissions. Use documented .NET security primitives. For dev use User Secrets/environment; for deployments use env/secret manager. No secrets committed.
-- Prefer generic client error messages without leaking which foreign resource exists. Log minimal necessary identifiers/correlation IDs; minimize location/PII retention, never log access tokens/passwords/card data.
+Every privileged token role is intersected with its authoritative current DB grants. Revoked Admin/Owner/Staff/Courier claims cannot authorize subsequent requests; adding a grant never expands an old token. Sign in again to acquire new claims. Requests already authorized can be in flight; identity-administration transactions recheck authority after ordered actor/target locks to close the mutation race.
 
-## API idempotency contract
+Only current Admin manages other users' Owner/Staff/Courier roles. No HTTP Admin or Customer role administration exists. Current Owner plus restaurant membership manages eligible restaurant members in that restaurant. An Owner system role is global; membership scopes it. Owners cannot change system roles or their own membership. Mutations and identifier-only audits share a transaction; repeated requests do not duplicate audit effects. Non-public provisioning/revocation must use the same user-lock discipline.
 
-For retryable mutating operations (e.g., order creation, mock payment capture/refund), require a scoped idempotency key where practical:
+Order reads check customer identity, courier assignment or live restaurant membership; Admin access is scoped and audited. Foreign private resources generally return404. Commands derive cancellation reasons and assignment identity from server policy. A role alone never authorizes a foreign restaurant/order.
 
-- Key scope = authenticated actor + operation/route + supplied idempotency key; max length/TTL defined.
-- Store request fingerprint and final response/result **atomically** with business effect or in appropriately coordinated transaction.
-- Same key and same canonical request → replay same business outcome; same key with materially different request → conflict, not a second effect.
-- Concurrent first requests for same key use unique DB constraint and controlled winner/loser behavior; verify in integration test.
-- Define behavior for in-flight or failed transient attempts; no permanent lock on half-failed pre-transaction attempt.
-- Do not claim all POST routes require one key if it is not applied; document exactly supported endpoints.
+## Browser, network and deployment
 
-## Concurrency and assignment integrity
+CORS defaults to no cross-origin grants. Configure at most20 exact approved origins through Cors:AllowedOrigins; HTTPS is required outside Development/Testing. No wildcards, credentials in URLs, paths or queries are accepted. SignalR separately rejects a supplied foreign Origin on negotiate/WebSocket requests; same-origin and authenticated nonbrowser clients remain supported.
 
-**Protection stack:** Domain transitions guard local legality, DB version guards stale Order updates, atomic courier claim and constraints prevent simultaneous claims, `AssignmentId` fences delayed workers. All four layers have different jobs.
+Default AllowedHosts is localhost/127.0.0.1. Non-local environments require explicit demo acknowledgement, valid non-wildcard hosts and HTTPS JWT issuer. Payments remain a mock, labeled by X-OrderFleet-Payments:mock. HSTS and HTTPS redirection apply outside Development/Testing; deploy behind correctly configured TLS termination. This repository has no real payment adapter.
 
-- DB schema prevents multiple conflicting active assignments per courier (partial unique index/lock/conditional update as appropriate).
-- Dispatch transaction jointly validates order current status, courier availability, current assignment, payment readiness if required, and writes claim + order + event.
-- Retry transactional serialization/deadlock only when safe; reload current state and rerun domain checks; bounded backoff. Do not automatically reexecute a payment without its idempotency key.
-- Stale worker cannot cancel/release/pickup/deliver a later assignment after reassignment. Durable check is necessary.
-- Define ordering of locks/atomic operations to reduce deadlocks; observe and measure conflict outcomes.
+Forwarded headers are disabled by default. Enabled configuration requires explicit proxy IPs/CIDRs with no /0; one hop is processed. Trusted forwarding precedes logging/auth/limits. Enforce network isolation and correct proxy headers; do not enable an independent trust-all override.
 
-## Outbox, publisher and consumer contract
+RequestLimits defaults per actor/minute: create10, write60, read120 and hub invocations60. Route casing does not bypass create limits. Hub invocation budget spans connections; existing connection/subscription/message-size caps remain. Anonymous partitions use the trusted socket/forwarded client IP. These are single-instance limits; production edge/DDoS controls require separate validation.
 
-**DB commit does not atomically publish to RabbitMQ.** Use transactional Outbox, publish after commit, and assume at-least-once with duplicates.
+## Privacy and secrets
 
-1. Within same PostgreSQL transaction, update domain records and insert versioned outbox event.
-2. After commit, worker leases/claims pending outbox rows, publishes persistent message to durable intended route, and waits for publisher confirm. Verify routability (e.g. mandatory-return behavior/topology) as appropriate.
-3. Mark published only after confirmed broker acceptance. If process crashes between publish and mark, it may publish again. Consumers dedupe.
-4. Consumer validates payload/event version and message identity. In one durable transaction, insert processed-message marker and perform side effect; ack after commit.
-5. Failure before consumer commit → nack/requeue or retry; failure after commit before ack → duplicate delivery, marker prevents duplicate effect.
-6. Poison message policy: bounded retries with delay/backoff, dead-letter visibility, sensitive logs redacted. No infinite hot requeue loops.
-7. Multiple outbox worker processes cannot claim/mark each other's leases accidentally. Recover expired leases after crash.
-8. Event ordering: don't assume global order. Use aggregate version/sequence if a subscriber requires order; idempotent stale-event handling.
-9. Broker publisher confirms and consumer acknowledgements are independent; neither means “exactly once end to end.”
+Private destination coordinates are persisted separately and exposed only through authorized delivery details. Public order/event/ETA responses exclude them. Precise courier notification coordinates require a current authorized active assignment and live subscription checks. Identical GPS replay does not create another event.
 
-## Recovery and schedule correctness
+SafeLogSink allows approved templates/properties and reduces unknown warnings/errors to safe incident metadata. Trace/request processing excludes query credentials, bodies, SQL text, baggage and private coordinates. Keep .env, key files, local settings and build artifacts untracked and out of Docker contexts. Review history as well as HEAD before publication.
 
-- Persist deadlines and attempts in UTC; monotonic observation where appropriate. Keep test clock injectable and bounded timeouts.
-- Workers may run concurrently and restart; claim jobs atomically and with leases/fences. Idempotent timeout handler checks latest state before cancel/release.
-- Dependencies down: API should report appropriate partial unavailability for operations that need them; outbox should backlog under documented policy, not block local business transaction on network roundtrip.
-- Define retention/cleanup for outbox/inbox, locations, audit and idempotency records without sacrificing active operation correctness.
+Changing .env does not rotate initialized database/broker credentials. Rotate the stored credentials, demo hashes and JWT configuration coherently; verify new access and old rejection while preserving records and volumes. Never print resolved Compose configuration, full container environments, tokens or password-bearing responses. The identified local archive exposure was remediated as recorded in [release verification](16_RELEASE_VERIFICATION.md); unknown external credential reuse is not certified.
 
-## Failure injection suite — minimum acceptance scenarios
+## Transactions and delivery
 
-| Injection | Expected protected result |
-|---|---|
-| API repeats order create with same key | One Order, same resulting response/outcome |
-| Two processes accept/cancel same order | Legal single state, conflict recognized; no lost update |
-| Two dispatch workers claim one courier | At most one incompatible active claim |
-| Worker publishes and dies before marking Outbox | Event may replay; consumer business effect once |
-| Consumer commits, dies before ACK | Redelivery safely no-op at business side effect |
-| RabbitMQ outage after Order commit | Order + Outbox intact; event published on recovery |
-| Expired acceptance timeout races restaurant acceptance | One legal durable state; compensation as agreed |
-| Old AssignmentId submits Pickup after reassign | Rejected; latest assignment unchanged |
-| User guesses another order ID / SignalR group | Unauthorized, no payload leakage |
-| Courier sends stale GPS timestamp | Latest valid location not overwritten |
+Business changes, audit and Outbox commit together. DB xmin/unique constraints complement Domain guards; order→courier lock order and AssignmentId fences protect concurrent assignments. Broker publication happens after commit with mandatory routing and confirms. Completion/failure writes require the same live lease token/deadline.
 
-## Explicit safety boundaries
+Broker unavailability keeps durable retries with2..300-second bounded exponential jitter; it does not permanently dead-letter valid events. Invalid envelopes dead-letter for repair. A confirmed publish followed by DB completion failure retains its lease for at-least-once recovery. Consumers commit effects and Inbox before ACK; confirmed retry-copy publication precedes ACK of the original. Recovery never silently deletes a financial/business fact.
 
-- Mock payments do not process real money or PCI data.
-- Demo JWT setup not a substitute for production identity governance.
-- Dev secrets are local; tracked `compose.yaml` should be sanitized for publicly released portfolio, with `.env.example` placeholders and setup instructions.
-- Operational maturity must be described as **production-oriented**; don't imply audited enterprise production-readiness.
+HTTP create and processed Inbox identities remain indefinitely. Cleanup is bounded and consumption-safe: eligible published Outbox older than7 days, resolved recovery failures older than30, finished-order dispatch attempts older than30. Pending/unresolved work, orders, payments, financial identities and audit remain protected. Exact replay/retention policy needs separate production approval before pruning identities.
 
-## Observed hardening controls (2026-10-26)
-
-Do not equate enabled worker configuration with health: monotonic progress/lifecycle and independently verified idle connections now feed readiness. Busy processing suppresses idle heartbeat, persistent failures keep their original grace origin, and dead/backlog alerts remain independent of readiness to avoid poison restart loops. Public health is generic; live Admin runtime diagnostics are bounded and omit URI/payload/exception details.
-
-Financial archive+Inbox is atomic before ACK. Schema/type/state/identity/money/currency checks precede archival; conflicting message identity is rejected, historical order/state sequence is not reapplied. Retained DLQ facts require controlled confirmed replay, not a new payment effect. Broker ready-message metrics exclude unacked deliveries and include sample timestamps in runtime diagnostics.
-
-SafeLogSink normalizes unknown Warning/Error incidents rather than suppressing all exceptions or exporting unrestricted data. SafeExceptionListener/ActivityProcessor still protect immutable trace events and SQL/baggage. Real HTTP/EF/Rabbit tests assert diagnostic visibility, correlation and private marker exclusion.
-
-## Explicit reverse-proxy trust
-
-Forwarded headers are disabled by default. Behind one controlled reverse proxy, set TrustedProxy:Enabled=true and configure TrustedProxy:KnownProxies (IP address array) and/or TrustedProxy:KnownNetworks (CIDR array). For example, environment keys TrustedProxy__KnownProxies__0 or TrustedProxy__KnownNetworks__0 identify an actual deployment proxy, not arbitrary clients. An enabled empty list, malformed entries and IPv4/IPv6 /0 trust fail startup. Only one rightmost hop is processed. No implicit loopback or trust-all ranges are added. Do not enable an independent framework/environment trust-all override.
-
-Middleware runs before request logging, HTTPS redirection, authentication and rate limiting. X-Forwarded-For and X-Forwarded-Proto are accepted only from configured peers; other sources retain their socket IP partition. Deploy with network rules preventing clients from reaching the API through an unintended trusted path, and configure the proxy to replace/append forwarding headers correctly. The existing per-client credential and health limits are unchanged. Real HTTP tests verify trusted IP/network separation, shared same-client limits, disabled handling, spoofed untrusted headers and invalid trust rejection without leaking config values.
-
-## Accepted registration timing tradeoff
-
-Duplicate-email registration deliberately returns the same Accepted public outcome as a successful registration, including concurrent uniqueness conflicts. IdentityAccounts.RegisterAsync still performs different internal work: duplicate paths skip successful role provisioning and transaction commit. Response time can therefore be an account-existence side channel; this pass does not claim constant-time registration or a measured timing bound. Credential rate limiting and generic responses reduce exposure but do not eliminate it. Keep this documented tradeoff for the demo; any production mitigation needs measurement and a separately reviewed identity-flow design. No synthetic delay, role change or transaction rewrite is introduced here. Login's existing unknown-user password verification remains unchanged.
+Public liveness reports process state; readiness checks dependencies, migration state and actual worker progress. Backlog/dead alerts are independent of readiness. Operators have live-Admin, payload-free diagnostics and audited bounded replay. Monitor backlog age/counts, retry reasons, failure timestamps and storage; operational success is not established by a green test alone.

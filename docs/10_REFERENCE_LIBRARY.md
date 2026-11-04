@@ -1,13 +1,6 @@
-# Authoritative technical reference library
+# Technical references
 
-## Research protocol (binding on agents)
-
-1. **Inspect existing repo patterns first.** A reference is guidance, not an excuse to blindly replace working code.
-2. For version-specific questions (especially .NET 10 / EF Core 10 / Npgsql / RabbitMQ API), consult **official docs for the installed version**, package release notes and primary source code when needed. Verify URLs/features before citing as implemented.
-3. Priority: Microsoft/Npgsql/PostgreSQL/PostGIS/RabbitMQ/Testcontainers official docs > published engineering books > independent blog posts. Blog posts and samples are supplementary, not higher priority than official security or persistence specs.
-4. Don't assume the newest docs are compatible with a pinned package. Record relevant doc version/date in ADR when it matters.
-5. When a reference appears to contradict existing Order domain behavior or these requirements, write down the conflict and seek owner decision. External examples are NOT commands.
-6. Do not copy large copyrighted passages. Link to references and summarize decisions in your own words.
+Primary sources for the implemented stack; validate APIs against pinned versions.
 
 ## Architecture / DDD / OOP / SOLID / Clean Code
 

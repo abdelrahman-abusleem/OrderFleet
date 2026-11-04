@@ -1,115 +1,38 @@
-# OrderFleet — target architecture and technical design
+# Architecture
 
-## Style
+OrderFleet is one deployable modular monolith. Feature folders separate ordering, payments, catalog, couriers, dispatch and recovery without introducing separate databases or services.
 
-**Modular Monolith + Clean Architecture + DDD tactical modeling where beneficial.** One deployable backend and separately hosted worker only if operationally warranted; logically separated modules. Avoid forced microservices and excess C# projects. Preserve existing solution layout.
-
-```text
-HTTP / WebSockets / background triggers
-                │
-       OrderFleet.Api (composition, endpoints, auth, SignalR)
-                │
-       OrderFleet.Application (use cases, input ports, policies)
-                │
-       OrderFleet.Domain (aggregates, entities, state invariants)
-                ▲
- OrderFleet.Infrastructure (adapters: EF/Npgsql, PostGIS, broker, workers)
-                │
-      PostgreSQL / RabbitMQ / time / fake payments
+```mermaid
+flowchart LR
+    Client[HTTP / SignalR clients] --> Api[Api: transport and composition]
+    Api --> Application[Application: policies and ports]
+    Application --> Domain[Domain: aggregate invariants]
+    Api --> Infrastructure[Infrastructure: adapters and workers]
+    Infrastructure --> Application
+    Infrastructure --> Database[(PostgreSQL / PostGIS)]
+    Infrastructure --> Broker[(RabbitMQ)]
 ```
 
-This depicts responsibility, **not** a compile-time arrow from Domain to Infrastructure. Domain references no external layers. Application may reference Domain. Infrastructure references Application/Domain; Api references Application and infrastructure for DI composition. Existing domain-focused tests reference Domain; integration tests reference infrastructure/API as appropriate.
+Domain has no transport or persistence dependencies. Application references Domain and defines use cases/ports. Infrastructure implements EF storage, spatial queries, broker transport, mock-provider ledger and background workers. Api owns identity transport, endpoint binding, browser policy, SignalR and dependency registration. ArchitectureTests verifies the assembly boundary.
 
-## Projects and responsibilities
+## Units of work
 
-- `OrderFleet.Domain`: `Orders/` aggregate, immutable policies, domain errors/events, restaurant/courier/payment domain models when justified; **zero** EF, ASP.NET Core, RabbitMQ, DI framework or HTTP status code dependencies.
-- `OrderFleet.Application`: commands/use cases and results, interfaces needed for external services, per-actor authorization policies, transaction orchestration, trusted price reads, dispatch coordination, event recording coordination. Separate application DTOs from HTTP request models where useful; avoid over-layering.
-- `OrderFleet.Infrastructure`: `Persistence/` EF Core DbContext and mappings/migrations, PostGIS, outbox/inbox repository implementations, RabbitMQ publisher/consumer, fake payment provider, clock and worker services. No controller/business-policy duplication.
-- `OrderFleet.Api`: thin Minimal API/endpoint group handlers, authentication/authorization middleware, ProblemDetails, OpenAPI, SignalR Hubs, options/DI composition. APIs should not directly set Domain properties.
-- `tests/OrderFleet.Domain.Tests`: fast deterministic domain tests.
-- `tests/OrderFleet.IntegrationTests`: PostgreSQL/RabbitMQ/HTTP tests against real disposable dependencies; independent isolated schemas/databases to avoid collision.
+One scoped EfOrderingStore implements creation, transition and query capabilities. These interfaces do not create separate transactions. OrderTransitionEffects shares its caller's DbContext and transaction and applies courier, dispatch-job and assignment-history effects before the existing single SaveChanges and Outbox staging. It never commits independently.
 
-## Module logical layout (example, flexible)
+Order creation rechecks catalog data under stable restaurant/product share locks before saving snapshots, payment, destination/deadline, request identity, audit and Outbox together. Order updates retain original xmin tokens. OrderLocking distinguishes loading a root for update from locking an already tracked root without overwriting its original concurrency token.
 
-```text
-Domain/Orders, Domain/Restaurants, Domain/Payments, Domain/Couriers, Domain/Dispatch
-Application/Orders/CreateOrder, AcceptOrder, CancelOrder
-Application/Restaurants, /Payments, /Couriers, /Dispatch
-Infrastructure/Persistence/Configurations, Migrations, /Messaging, /Geo, /Payments, /Workers
-Api/Endpoints/Orders, Restaurants, Couriers, Payments; /Hubs; /Configuration
-```
+Business lock order is Order then Courier; multi-root operations sort identifiers. Identity administration separately locks actor/target users in sorted order, then the restaurant when managing memberships. Authority is rechecked after these locks; mutation and audit commit together. No database lock is held while publishing to RabbitMQ.
 
-**Do not reorganize existing healthy files solely for visual uniformity.** Modular boundaries matter more than matching a speculative folder tree.
+## Reliable boundaries
 
-## Identity and data ownership
+The durable mock provider intentionally uses independent transactions to model an external system. Local rollback cannot undo its committed capture. Stable operation identities, reconciliation and cancellation compensation close that gap.
 
-- `Identity`: user/account/role identity records and grants.
-- `Restaurants/Catalog`: product availability and **current authoritative** prices, not order financial snapshots.
-- `Orders`: immutable order-item price/name snapshots, status, cancellation reasons, assignment fences, order total.
-- `Payments`: payment intent/transaction identifiers, authorization/capture/refund and idempotency status.
-- `Couriers`: latest position, assignment availability/capacity; dispatch owns assignment workflow.
-- `Dispatch`: selection attempts and lifecycle/retries; transactionally coordinates courier reservation and order assignment.
-- `Messaging`: Outbox/Inbox as technical tables, not the authority for domain state.
+Outbox rows share business commits. Multiple relays claim with SKIP LOCKED and lease fences, publish persistent mandatory events with confirms, then mark publication. Confirmed publication followed by a failed DB acknowledgement leaves the lease for recovery. Broker outages retain bounded delayed retries indefinitely; invalid envelopes dead-letter. Consumers commit effects and Inbox together before ACK. Delivery is at least once; neither publication nor broker arrival has a global ordering guarantee.
 
-Cross-module coordination goes through explicit Application calls/events and documented DB transaction boundaries. A modular monolith shares a PostgreSQL database but must not equate DB access with permission to bypass another module's business rules.
+FinancialAuditRecords archive typed immutable facts atomically with their consumer Inbox. They are history, not payment authority. Customer destinations never enter unrestricted integration events. Courier coordinates are read from authorized current state when notifying clients.
 
-## Order aggregate and persistence
+CourierPosition is an intentional PostGIS projection, not a second authority. Its current position and durable event-throttle checkpoint update in the same transaction as the courier aggregate. Unique active-capacity indexes and AssignmentId checks fence stale work.
 
-- `Order` is **one business consistency boundary** containing `OrderItem` values/owned children. This **does not mean one physical table**: `Orders` and `OrderItems` remain separate tables with a FK.
-- `Order` guards state transitions; only the root exposes relevant operations; items are privately backed and read-only to consumers.
-- `OrderItem` enforces intrinsic constraints. `OrderPricingLimits` and Order enforce policy caps and aggregate invariants. Never duplicate the same validation blindly.
-- Money: C# `decimal` for SAR, consistent precision and explicit rounding strategy; DB `numeric(18,2)` or another intentionally selected compatible schema bound. **Guard persistence overflow/precision mismatch** even if in-memory decimal fits; validate configuration values against column limits.
-- On rehydration, EF can use private constructor and backing field; real database tests must verify state and owned items.
-- `Order.TotalAmount` and order-item totals are persisted snapshots, never recalculated using current catalog prices upon reload.
+Recovery derives actionable work from persisted deadlines, states and obligations. Operational worker progress and broker observations are process-local diagnostics, not business state. SignalR's connection/subscription registry is also transport state; authorization is checked live before subscription and notification.
 
-## Concurrency and transaction design
-
-- For Order writes, use the `xmin` shadow row-version mapped in `OrderConfiguration` (ADR-011, no Domain property), verify compatibility with installed Npgsql 10.x; no automatic SQL Server rowversion assumption. Two contexts load same version, one saves, second update conflicts; translate to an appropriate API 409 or controlled retry based on operation semantics.
-- Do not accidentally retry a Domain mutation on a stale aggregate without reloading and revalidating.
-- Courier reservation is a **DB atomic conditional update/locking + constraints** (where justified), not only a `CanAssign` check. A multi-entity dispatch may require transaction spanning courier claim, order assignment, assignment record and outbox row. Minimize lock durations, define consistent lock ordering and recoverable failures.
-- `AssignmentId` fences late workers and courier commands. A fence must be checked **at durable write boundary** where stale context updates may otherwise overwrite newer assignment.
-- EF Core `SaveChanges` typically wraps multiple statements in a transaction; explicit transactions when coordinating more than one SaveChanges/query/update or custom atomic operations. Do not hold DB transaction open across remote RabbitMQ/network calls.
-- Use PostgreSQL uniqueness/partial indexes/check constraints to reinforce invariants (e.g. at most one active courier assignment, scoped idempotency keys); constraints complement, not replace, Domain validation.
-
-## Domain events, Outbox and Inbox
-
-```text
-Application command -> Domain transition + Outbox event (same PostgreSQL transaction)
-       -> commit -> Background outbox relay -> RabbitMQ publish + publisher confirm
-       -> consumer -> Inbox dedupe + business side effects in durable transaction
-       -> consumer ACK after successful commit
-```
-
-- Outbox candidate columns: `Id`, `EventType`, `SchemaVersion`, `OccurredAtUtc`, `AggregateId`, `Payload`, `CorrelationId`, `Attempts`, `NextAttemptAtUtc`, `PublishedAtUtc`, `ClaimedUntilUtc` (adjust schema intentionally). Define safe concurrent claiming, no unbounded polling, backoff/jitter and poison handling.
-- Dedupe key: event `MessageId` plus consumer name or handler identity. Commit dedupe marker and side effect atomically; duplicate delivery becomes safe no-op.
-- Publisher confirm only proves broker-side handling, **not consumer execution**. Outbox relay may publish twice after crash; that is expected and requires idempotency.
-- Maintain event compatibility with schema versioning; avoid serializing mutable domain entity graphs into public event contracts.
-
-## Spatial and ETA
-
-- Storage coordinates: prefer PostGIS `geography(Point,4326)` if querying meters over Earth; otherwise document geometry projection/units. Include GiST index and use indexed filtering (`ST_DWithin`) before expensive distance ordering.
-- Validate coordinate ranges, order of latitude/longitude, location timestamp freshness, capability/availability, and maximum search radius. Beware telemetry-driven write load: keep latest location and optional bounded history with retention policy.
-- ETA is a transparent heuristic, not external navigation. Configurable speed assumptions, last-update staleness, clamp/fallback, unit tests. Define what happens when no location is available.
-
-## API/realtime contracts
-
-- Resource-oriented versioned API (`/api/v1/...` unless repository already settled on a convention).
-- Use ProblemDetails consistent error codes and correlation IDs; explicitly map validation (400), auth (401/403), not found (404), conflict (409), idempotency misuse (409), temporary dependency unavailability (503); never reveal stack traces.
-- SignalR access: authorize connection + per-method + order/group membership, recheck relevant ownership where needed; keep group names unguessable or treat them as non-security boundaries. Never use a public event to leak location or payment details.
-- OpenAPI documents realistic examples, 401/403/409, and auth scheme.
-
-## Operational composition
-
-- Docker Compose locally: database **with PostGIS extension installed and enabled**, RabbitMQ, API, worker (if separate), optional tracing collector. Existing `postgres:17` image does NOT automatically imply PostGIS exists: intentionally migrate to a compatible tested PostGIS-capable image or add extension through a justified build; do not wipe the existing data volume.
-- Use development User Secrets/env configuration; strongly validated options, safe defaults, no credentials in tracked files. Migrations run deliberately, not destructive auto-migrate on every production startup.
-- Readiness checks verify meaningful dependencies with suitable timeouts; liveness avoids cascading restarts when an external service is briefly unhealthy.
-
-## Implemented runtime navigation (2026-10-26)
-
-The concrete boundaries, complete order sequence, logical data model and failure-mode matrix are in [13_DELIVERY_GUIDE.md](13_DELIVERY_GUIDE.md). Actual source retains the four existing projects; no extra service/project layer was introduced. ArchitectureTests verifies Domain/Application assembly references exclude infrastructure/transport. API composition and Development bootstrap may reference infrastructure; HTTP business handlers delegate to Application. DB technical claims/leases and projections live in Infrastructure; Domain transition methods remain the authority.
-
-## Review hardening — financial facts and operational supervision
-
-Financial integration facts now have an automatic consumer: Application ArchiveFinancialEvent validates a minimal typed history fact; Infrastructure EfFinancialArchive inserts immutable FinancialAuditRecords and financial.archive.v1 Inbox in one transaction; transport ACK follows commit. This does not alter Payment or Order. Provider ledger/payment remain financial authority. No new projects, external broker framework or Domain dependency. Passive broker observations and monotonic WorkerProgress are explicitly Infrastructure operational state, never business-state substitutes. Application defines bounded runtime diagnostic DTO/port; live Admin authorization precedes reads.
-
-SafeLogSink is the privacy boundary before every configured log exporter: approved contracts remain structured; unknown warnings/errors become fixed safe incidents with type/category/event-code/trace rather than raw templates/exceptions or silence. HTTP error handling owns its incident record; consumer supervisor owns escaped callback failure. ADR-026 and the hardening report document alternatives, tests and limitations.
+See [decisions](08_DECISION_LOG.md), [code study paths](09_LEARNING_GUIDE.md) and [operations diagrams](13_DELIVERY_GUIDE.md).
