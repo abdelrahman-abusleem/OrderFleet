@@ -21,6 +21,7 @@ if (migrateOnly && seedOnly) throw new InvalidOperationException("Run migration 
 var builder = WebApplication.CreateBuilder(args.Where(arg => arg is not ("--migrate" or "--seed-demo")).ToArray());
 builder.AddOrderTelemetry();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddDeploymentSafety(builder.Configuration, builder.Environment);
 
 var connectionString = builder.Configuration
     .GetConnectionString("OrderFleet")
@@ -74,13 +75,22 @@ if (seedOnly)
 app.UseForwardedHeaders();
 app.UseMiddleware<SafeRequestLogging>();
 app.UseExceptionHandler();
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-OrderFleet-Payments"] = "mock";
+    await next(context);
+});
 
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapOpenApi().AllowAnonymous();
 }
 
-if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing")) app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
