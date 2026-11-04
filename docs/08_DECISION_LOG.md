@@ -38,7 +38,7 @@ These decisions describe current implementation. Historical rollout notes have b
 
 ## Financial consistency
 
-Provider and local commits are intentionally independent. Stable operation keys and provider status reconciliation prevent duplicate charges after lost responses. A cancellation fact remains a durable compensation obligation. If settlement first discovers capture, its capture snapshot and succeeded attempt precede the refund snapshot in the same local save/Inbox transaction. Payment history is immutable and deduplicated; broker ordering is not assumed.
+Provider and local commits are intentionally independent. Stable operation keys and provider status reconciliation prevent duplicate charges after lost responses. A cancellation fact remains a durable compensation obligation. If settlement first discovers capture, its capture snapshot, succeeded attempt and refund snapshot share one atomic save/Inbox transaction with provider times. Audit chronology uses OccurredAtUtc; physical Outbox insertion/broker arrival order is not a financial contract. Payment history is immutable and deduplicated; broker ordering is not assumed.
 
 Permanent capture decline replays409. Confirmed transient failure returns503 and remains retryable before the original deadline. Unknown outcome reconciles; it is not exposed as permanent failure. Late capture persists financial evidence for compensation but cannot accept/dispatch an expired order.
 
