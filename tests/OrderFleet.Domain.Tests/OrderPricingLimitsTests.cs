@@ -6,10 +6,10 @@ public class OrderPricingLimitsTests
 {
     public static TheoryData<int> NonPositiveIntegers => new() { 0, -1, int.MinValue };
 
-    // Every value is either non-positive or carries more than two halalas.
-    // (Beware unreachable literals: 7922816251426433759354395033.5007m is not
-    // representable and the compiler silently rounds it to ...5033.5, which
-    // would be a perfectly valid limit.)
+
+
+
+
     public static TheoryData<decimal> InvalidMonetaryLimits => new()
     {
         0m, -0.01m, -1m, decimal.MinValue, 0.001m, 0.004m, 0.005m, 1.001m, 1.005m,
@@ -76,13 +76,13 @@ public class OrderPricingLimitsTests
         Assert.Equal(7_777.77m, limits.MaxOrderTotal);
     }
 
-    // The limits must guarantee that the maximal aggregation of any
-    // policy-compliant order - maxUnitPrice x maxQuantityPerItem x
-    // maxItemsPerOrder - stays representable as a decimal.
+
+
+
     [Fact]
     public void Constructor_AcceptsTheHighestSafelyRepresentablePriceLimit()
     {
-        // maxUnits = 4: 4 x 19807040628566084398385987583 = decimal.MaxValue - 3.
+
         var limits = new OrderPricingLimits(2, 2, 19807040628566084398385987583m, decimal.MaxValue);
 
         Assert.Equal(19807040628566084398385987583m, limits.MaxUnitPrice);
@@ -92,8 +92,8 @@ public class OrderPricingLimitsTests
     [Fact]
     public void Constructor_RejectsPriceLimitsBeyondTheAggregateDecimalRange()
     {
-        // maxUnits = 2: admitting decimal.MaxValue itself would let a single
-        // line of quantity 2 become unrepresentable.
+
+
         var exception = Assert.Throws<ArgumentException>(() =>
             new OrderPricingLimits(2, 1, decimal.MaxValue, decimal.MaxValue));
         Assert.Equal("maxUnitPrice", exception.ParamName);
@@ -102,18 +102,18 @@ public class OrderPricingLimitsTests
     [Fact]
     public void Constructor_RejectsPriceLimitsThatOverflowThroughTheItemCount()
     {
-        // maxUnits = 4: 39614081257132168796771975168 x 4 exceeds decimal.MaxValue.
+
         var exception = Assert.Throws<ArgumentException>(() =>
             new OrderPricingLimits(2, 2, 39614081257132168796771975168m, decimal.MaxValue));
         Assert.Equal("maxUnitPrice", exception.ParamName);
     }
 
-    // Relocated from OrderCreationTests once the constructor became the
-    // single guard against unsafe monetary configurations: it can no longer
-    // be handed to Order.Create, so its rejection is asserted here.
-    // 19807040628566084398385987584 is exactly the value the superseded
-    // division-based guard admitted at maxUnits = 4 (decimal.MaxValue / 4
-    // rounded up); two lines of quantity 2 already total decimal.MaxValue + 1.
+
+
+
+
+
+
     [Fact]
     public void Constructor_RejectsTheDivisionRoundUpBoundary_WithADomainException()
     {
@@ -122,10 +122,10 @@ public class OrderPricingLimitsTests
         Assert.Equal("maxUnitPrice", exception.ParamName);
     }
 
-    // Same boundary rule as OrderItem's line-total guard: the superseded
-    // division-based bound decimal.MaxValue / maxUnits rounds up for some
-    // maxUnits values, and the constructor must not admit a price that makes
-    // the maximal aggregation unrepresentable.
+
+
+
+
     [Fact]
     public void Constructor_NeverAdmitsAPriceLimit_WhoseMaximalAggregationOverflowsDecimal()
     {
@@ -143,7 +143,7 @@ public class OrderPricingLimitsTests
             }
             catch (ArgumentException)
             {
-                // Rejected by the constructor: acceptable.
+
             }
 
             if (!admitted)

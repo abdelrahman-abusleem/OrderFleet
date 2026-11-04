@@ -47,7 +47,7 @@ public sealed class CaptureCancellationRaceTests(PostgresFixture fixture) : ICla
             Assert.Equal(OrderStatus.Cancelled, (await snapshot.Orders.SingleAsync(x => x.Id == id, timeout.Token)).Status);
             var obligation = await snapshot.OutboxMessages.SingleAsync(x => x.AggregateId == id && x.Type == "order.cancelled.v1", timeout.Token);
             cancellationMessage = obligation.Id;
-            // Even while capture's HTTP response is held, compensation is durable.
+
             Assert.Null(obligation.PublishedAtUtc);
             using var scope = factory.Services.CreateScope();
             await scope.ServiceProvider.GetRequiredService<SettleCancelledPayment>().ExecuteAsync(cancellationMessage, id, timeout.Token);

@@ -103,8 +103,8 @@ public sealed class DispatchContentionTests(PostgresFixture fixture) : IClassFix
         await using var transaction = await blocker.Database.BeginTransactionAsync();
         await blocker.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Orders\" WHERE \"Id\" IN ({first}, {second}) ORDER BY \"Id\" FOR UPDATE");
         var contenders = new[] { DispatchAsync(factory, first), DispatchAsync(factory, second) };
-        // PostgreSQL activity snapshots can be cached until transaction end.
-        // Observe through a separate autocommit connection, not the lock holder.
+
+
         await using var observer = fixture.CreateContext();
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try
@@ -127,7 +127,7 @@ public sealed class DispatchContentionTests(PostgresFixture fixture) : IClassFix
         finally
         {
             if (blocker.Database.CurrentTransaction is not null) await transaction.RollbackAsync();
-            // Always observe outstanding tasks after releasing the test-only lock.
+
             await Task.WhenAll(contenders);
         }
         await using var verify = fixture.CreateContext();

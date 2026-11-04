@@ -14,7 +14,7 @@ public sealed class SettleCancelledPayment(IPaymentStore store, IPaymentProvider
         if (!await store.IsCancelledAsync(orderId, cancellationToken))
             throw new OperationConflictException("Cancellation fact does not match durable order state.");
         var payment = await store.FindAsync(orderId, cancellationToken) ?? throw new ResourceNotFoundException();
-        // Provider state resolves capture-before-order-commit crashes and cancel/capture races.
+
         var settled = await provider.SettleAsync(payment.AuthorizationId, cancellationToken);
         if (settled.State == ProviderPaymentState.Refunded)
         {

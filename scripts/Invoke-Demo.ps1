@@ -1,5 +1,5 @@
 param([ValidatePattern('^http://(localhost|127\.0\.0\.1):[0-9]+/?$')][string]$BaseUrl = 'http://127.0.0.1:8080')
-# PowerShell7+. No tokens, password, response bodies or private coordinates are printed.
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $demoRoot = Split-Path $PSScriptRoot -Parent

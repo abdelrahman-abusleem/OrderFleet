@@ -22,7 +22,6 @@ dotnet_diagnostic.IDE0161.severity = warning
 indent_style = space
 indent_size = 2
 
-# Preserve the encoding of established Domain files and migration history.
 [src/OrderFleet.Domain/Orders/{CancellationReason,OrderItem,OrderPricingLimits,OrderStatus}.cs]
 charset = utf-8-bom
 

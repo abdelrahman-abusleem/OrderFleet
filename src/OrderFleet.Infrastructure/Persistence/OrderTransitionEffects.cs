@@ -5,8 +5,8 @@ using OrderFleet.Domain.Orders;
 
 namespace OrderFleet.Infrastructure.Persistence;
 
-// Shares SaveAsync's context and transaction. Stages effects only: never saves,
-// commits, clears events or reorders pending facts across aggregate roots.
+
+
 internal sealed class OrderTransitionEffects(OrderFleetDbContext context, ILogger<EfOrderingStore>? logger)
 {
     internal async Task SynchronizeAsync(IEnumerable<Order> orders, CancellationToken ct)
@@ -14,7 +14,7 @@ internal sealed class OrderTransitionEffects(OrderFleetDbContext context, ILogge
         foreach (var order in orders)
             foreach (var fact in order.DomainEvents)
             {
-                // Courier-before-job/history is a concurrency contract.
+
                 await ReleaseCourierCapacityAsync(order.Id, fact, ct);
                 await SynchronizeDispatchJobAsync(order.Id, fact, ct);
                 await SynchronizeAssignmentHistoryAsync(order.Id, fact, ct);
@@ -34,8 +34,8 @@ internal sealed class OrderTransitionEffects(OrderFleetDbContext context, ILogge
         {
             var courier = await context.Couriers.FromSqlInterpolated(
                 $"SELECT *, xmin FROM \"Couriers\" WHERE \"Id\" = {references.Value.CourierId} FOR UPDATE").SingleOrDefaultAsync(ct);
-            // Standalone legacy Order persistence does not require a Courier
-            // profile. Application dispatch/transition paths always require it.
+
+
             if (courier is null)
                 (logger ?? context.GetService<ILoggerFactory>().CreateLogger<EfOrderingStore>())
                     .LogWarning("Courier capacity missing for order {OrderId}", orderId);

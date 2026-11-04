@@ -7,8 +7,8 @@ using OrderFleet.Application.Diagnostics;
 
 namespace OrderFleet.Application.Payments;
 
-// Captures against a stable provider operation; the caller commits successful capture
-// facts with acceptance, while failures are persisted before returning their outcome.
+
+
 public sealed class CaptureOrderPayment(IPaymentStore payments, IPaymentProvider provider, IClock clock)
 {
     public async Task ExecuteAsync(Order order, CancellationToken cancellationToken)

@@ -42,7 +42,7 @@ public sealed class OrderingTransactionTests(PostgresFixture fixture) : IClassFi
                 case "Release": order.ReleaseAssignment(assignmentId, now); break;
                 case "Cancel": order.Cancel(CancellationReason.AdminCancelled, now); break;
                 case "Deliver":
-                    // Multiple pending facts must synchronize in their original order.
+
                     order.MarkPickedUp(courierId, assignmentId, now);
                     order.Deliver(courierId, assignmentId, now);
                     break;

@@ -9,8 +9,8 @@ using OrderFleet.Domain.Common;
 
 namespace OrderFleet.Infrastructure.Payments;
 
-// An explicit mock provider ledger in separate transactions simulates durable external
-// financial effects. No real money, cards, gateway credentials or network charges.
+
+
 public sealed class DurableMockPaymentProvider(IDbContextFactory<OrderFleetDbContext> contexts,
     IOptions<MockPaymentOptions> options, IClock clock) : IPaymentProvider
 {
@@ -93,8 +93,8 @@ public sealed class DurableMockPaymentProvider(IDbContextFactory<OrderFleetDbCon
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         var authorization = await LockAsync(context, authorizationId, cancellationToken);
-        // Creation takes a shared authorization lock before attaching a Payment. This
-        // check cannot void another concurrent request's committed order authorization.
+
+
         if (authorization.State != ProviderPaymentState.Authorized
             || await context.Payments.AnyAsync(x => x.AuthorizationId == authorizationId, cancellationToken)) return;
         authorization.Settle(clock.UtcNow);

@@ -11,7 +11,7 @@ public interface IFinancialArchive
     Task StoreAsync(IntegrationEvent envelope, FinancialFact fact, CancellationToken ct);
 }
 
-// An immutable history projection, never an instruction to charge or mutate Payment.
+
 public sealed class ArchiveFinancialEvent(IFinancialArchive archive) : IIntegrationEventHandler
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)

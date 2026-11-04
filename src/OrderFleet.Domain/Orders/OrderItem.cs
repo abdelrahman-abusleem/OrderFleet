@@ -15,7 +15,7 @@ public sealed class OrderItem
 
     public decimal TotalPrice { get; private set; }
 
-    private OrderItem() { } // EF Core
+    private OrderItem() { }
 
     public OrderItem(
         Guid productId,

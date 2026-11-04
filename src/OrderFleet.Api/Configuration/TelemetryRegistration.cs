@@ -66,8 +66,8 @@ public static class TelemetryRegistration
                     reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = interval;
                 });
             });
-        // Sampling is resolved from the final host configuration. Instrumentation
-        // and exporters must still register their services before provider creation.
+
+
         builder.Services.ConfigureOpenTelemetryTracerProvider((services, traces) =>
         {
             var ratio = services.GetRequiredService<IConfiguration>().GetValue("Telemetry:TraceSamplingRatio", 0.1);

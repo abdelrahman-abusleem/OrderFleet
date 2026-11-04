@@ -16,8 +16,8 @@ public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> c
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);
         var leaseId = Guid.NewGuid();
         var until = now + leaseDuration;
-        // One DB statement claims without a process lock. SKIP LOCKED allows several
-        // workers to make progress; token and deadline fence all completion writes.
+
+
         var rows = await context.OutboxMessages.FromSqlInterpolated($"""
             WITH candidates AS (
                 SELECT "Id" FROM "OutboxMessages"

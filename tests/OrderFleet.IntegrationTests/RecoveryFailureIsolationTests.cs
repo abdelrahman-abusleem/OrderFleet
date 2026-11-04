@@ -53,7 +53,7 @@ public sealed class RecoveryFailureIsolationTests(PostgresFixture fixture) : ICl
             Assert.Equal(permanent, failure.DeadLetteredAtUtc.HasValue);
             Assert.DoesNotContain("private-marker", failure.LastErrorCode!);
         }
-        await RecoveryTests.RunAsync(factory); // Persisted backoff/dead flag prevents a hot retry.
+        await RecoveryTests.RunAsync(factory);
         if (!permanent)
         {
             clock.Advance(TimeSpan.FromSeconds(3));
@@ -62,7 +62,7 @@ public sealed class RecoveryFailureIsolationTests(PostgresFixture fixture) : ICl
         var failures = await admin.GetFromJsonAsync<JsonElement>("/api/v1/operations/recovery-failures?state=dead");
         Assert.Contains(failures.EnumerateArray(), item => item.GetProperty("resourceId").GetGuid() == failedOrder);
         inject = false;
-        await RecoveryTests.RunAsync(factory); // Fixed dependency alone cannot silently reopen a dead item.
+        await RecoveryTests.RunAsync(factory);
         await using (var context = fixture.CreateContext())
             Assert.Equal(OrderStatus.Created, (await context.Orders.SingleAsync(x => x.Id == failedOrder)).Status);
         var key = Guid.NewGuid().ToString("N");
@@ -81,8 +81,8 @@ public sealed class RecoveryFailureIsolationTests(PostgresFixture fixture) : ICl
         Assert.Equal(permanent ? "InvariantViolation" : "DependencyOrConflict", audit.PreviousOutcome);
     }
 
-    // Failure injection delegates all business/storage behavior to the production
-    // adapter; only one pre-operation dependency/invariant fault is introduced.
+
+
     private sealed class ExpiryFailure(IRecoveryStore inner, Guid failedOrder, bool inject, bool permanent) : IRecoveryStore
     {
         public Task<IReadOnlyList<Guid>> ExpiredOrdersAsync(DateTimeOffset now, int count, CancellationToken ct) => inner.ExpiredOrdersAsync(now, count, ct);

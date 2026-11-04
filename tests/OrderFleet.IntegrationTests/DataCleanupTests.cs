@@ -23,7 +23,7 @@ using static OrderFleet.IntegrationTests.DispatchConcurrencyTests;
 
 namespace OrderFleet.IntegrationTests;
 
-// A global retention sweep needs a fresh database per case, not shared test data.
+
 [Trait("Category", "PostgreSQL")]
 public sealed class DataCleanupTests : IAsyncLifetime
 {

@@ -9,7 +9,7 @@ using OrderFleet.Infrastructure.Persistence;
 
 namespace OrderFleet.Api.Development;
 
-// Explicit local provisioning, never an HTTP endpoint or normal startup action.
+
 public static class DemoBootstrap
 {
     public sealed record Manifest(Guid RestaurantId, Guid ProductId);
@@ -34,7 +34,7 @@ public static class DemoBootstrap
             var email = names[index] + "@demo.orderfleet.test";
             var expected = Guid.Parse($"de000000-0000-4000-8000-{index + 1:000000000000}");
             var account = await users.FindByEmailAsync(email);
-            // Never promote a preexisting public registration with a matching email.
+
             if (account is not null && account.Id != expected)
                 throw new InvalidOperationException("Demo email already belongs to another identity; seed aborted.");
             if (account is null)

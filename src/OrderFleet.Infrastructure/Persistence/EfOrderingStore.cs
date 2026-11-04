@@ -38,8 +38,8 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
             || authorization.Amount != order.TotalAmount || authorization.Currency != order.Currency
             || payment.OrderId != order.Id || payment.Amount != order.TotalAmount || payment.Currency != order.Currency)
             throw new OperationConflictException("Payment authorization does not match the order.");
-        // Revalidate the trusted snapshot under DB share locks. Catalog mutation cannot
-        // slip between this check and commit; lock in stable restaurant/product order.
+
+
         var restaurant = await context.Restaurants.FromSqlInterpolated(
             $"SELECT *, xmin FROM \"Restaurants\" WHERE \"Id\" = {order.RestaurantId} FOR SHARE")
             .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
@@ -93,9 +93,9 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
         catch (DbUpdateException error) when (error.InnerException is PostgresException
         { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.OrderEventSequence })
         {
-            // EF may insert the event before updating the root's xmin. Two stale
-            // writers therefore collide on the event sequence before the root CAS.
-            // SaveChanges rolls back both; expose the same optimistic conflict.
+
+
+
             throw new DbUpdateConcurrencyException("Order event sequence changed concurrently.", error);
         }
         if (ownedTransaction is not null)

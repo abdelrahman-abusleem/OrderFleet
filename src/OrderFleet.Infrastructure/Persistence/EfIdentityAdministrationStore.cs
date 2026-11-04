@@ -50,6 +50,8 @@ public sealed class EfIdentityAdministrationStore(OrderFleetDbContext context) :
     }
 
     private Task<bool> HasRoleAsync(Guid userId, string role, CancellationToken ct) =>
-        (from grant in context.UserRoles.AsNoTracking() join definition in context.Roles on grant.RoleId equals definition.Id
-         where grant.UserId == userId && definition.Name == role select grant.UserId).AnyAsync(ct);
+        (from grant in context.UserRoles.AsNoTracking()
+         join definition in context.Roles on grant.RoleId equals definition.Id
+         where grant.UserId == userId && definition.Name == role
+         select grant.UserId).AnyAsync(ct);
 }

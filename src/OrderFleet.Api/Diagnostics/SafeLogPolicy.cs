@@ -26,8 +26,8 @@ public sealed class SafeLogPolicy : ILogEventEnricher
     ];
     public bool IsApproved(LogEvent logEvent)
     {
-        // Framework exception/SQL/request dumps are not an approved telemetry
-        // contract. Our boundary logs record controlled codes/types instead.
+
+
         if (!Templates.Contains(logEvent.MessageTemplate.Text)) return false;
         if (!logEvent.Properties.TryGetValue("SourceContext", out var property) || property is not ScalarValue { Value: string source }) return false;
         return source.StartsWith("OrderFleet", StringComparison.Ordinal) || source == "OrderAccessAudit" || source == "Microsoft.Hosting.Lifetime";

@@ -11,8 +11,8 @@ namespace OrderFleet.Infrastructure.Messaging;
 
 public sealed class RabbitDeliveryProcessor(ILogger<RabbitDeliveryProcessor>? logger = null)
 {
-    // Preserve the existing direct-call contract; hosted consumers pass their
-    // known worker name explicitly through the overload below.
+
+
     public Task ProcessAsync(IChannel channel, string queue, ulong deliveryTag, IReadOnlyBasicProperties properties,
         ReadOnlyMemory<byte> body, IIntegrationEventHandler handler, CancellationToken ct) =>
         ProcessAsync(channel, queue, LegacyWorkerName(queue), deliveryTag, properties, body, handler, ct);
@@ -29,7 +29,7 @@ public sealed class RabbitDeliveryProcessor(ILogger<RabbitDeliveryProcessor>? lo
         var failure = await TryHandleAsync(properties, body, handler, activity, ct);
         if (failure is not null)
             await RouteFailureAsync(channel, queue, consumerName, properties, body, failure, activity?.Id ?? traceParent, ct);
-        // Handler commit or confirmed durable retry copy always precedes ACK.
+
         await channel.BasicAckAsync(deliveryTag, multiple: false, ct);
     }
 
@@ -80,7 +80,7 @@ public sealed class RabbitDeliveryProcessor(ILogger<RabbitDeliveryProcessor>? lo
                 ["traceparent"] = Encoding.ASCII.GetBytes(traceParent ?? "")
             }
         };
-        // Lost ACK may duplicate this confirmed copy; handlers fence via Inbox.
+
         await channel.BasicPublishAsync("", target, mandatory: true, retry, body, ct);
     }
 

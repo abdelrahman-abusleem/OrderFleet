@@ -28,7 +28,7 @@ public sealed class EfPaymentStore(OrderFleetDbContext context) : IPaymentStore
         catch (DbUpdateException error) when (error.InnerException is PostgresException
         { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: DatabaseConstraintNames.InboxIdentity })
         {
-            // A concurrent consumer already committed the same message and effects.
+
             context.ChangeTracker.Clear();
         }
     }

@@ -38,8 +38,8 @@ public sealed class ManageCourier(ICourierStore store, IClock clock, CourierPoli
         var now = clock.UtcNow;
         if (observedAt is null || observedAt < now - policy.LocationFreshness || observedAt > now + policy.FutureSkew)
             throw new RequestValidationException("Location observation is missing or outside the allowed time window.");
-        // PostgreSQL timestamps preserve microseconds. Normalize before comparing so
-        // a replay carrying sub-microsecond ticks cannot look newer after reload.
+
+
         var utc = observedAt.Value.ToUniversalTime();
         var observation = new DateTimeOffset(utc.Ticks - utc.Ticks % 10, TimeSpan.Zero);
         var previousObservation = courier.LocationObservedAt;

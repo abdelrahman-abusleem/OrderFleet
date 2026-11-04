@@ -21,8 +21,8 @@ public sealed class DispatchVocabularyTests(PostgresFixture fixture) : IClassFix
         if (expected == "Completed") order.Cancel(CancellationReason.RestaurantCancelled, now);
         await using var context = fixture.CreateContext();
         context.Orders.Add(order); await context.SaveChangesAsync();
-        // Technical-record serialization fixture; business behavior is exercised
-        // separately through the real dispatch use cases and contention tests.
+
+
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "DispatchJobs" ("OrderId", "Attempts", "AssignmentCount", "Status", "NextAttemptAtUtc", "AssignmentId")
             VALUES ({order.Id}, 0, 0, {value}, {now}, {order.AssignmentId})

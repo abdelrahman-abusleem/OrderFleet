@@ -47,7 +47,7 @@ public sealed class RabbitConsumer(IOptions<RabbitOptions> options, IServiceScop
                     delivery.Body, handler, timeout.Token);
                 progress.Success(worker);
             }
-            catch (Exception error) { stopped.TrySetResult(error); } // Supervisor logs once; disposal requeues unacked deliveries.
+            catch (Exception error) { stopped.TrySetResult(error); }
         };
         await channel.BasicConsumeAsync(queue, autoAck: false, consumer, ct);
         while (!ct.IsCancellationRequested)

@@ -27,7 +27,7 @@ public sealed class BrokerQueueObserver(IOptions<RabbitOptions> options, TimePro
                 results.Add(new(consumer, kind, actual.MessageCount, actual.ConsumerCount, time.GetUtcNow()));
             }
         }
-        Volatile.Write(ref snapshot, results.ToArray()); // Failed samples never fabricate zeros.
+        Volatile.Write(ref snapshot, results.ToArray());
     }
 }
 

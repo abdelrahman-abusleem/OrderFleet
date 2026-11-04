@@ -31,7 +31,7 @@ public sealed class IdentityAccounts(UserManager<IdentityUser<Guid>> users, Orde
         catch (DbUpdateException error) when (error.InnerException is PostgresException
         { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            // Concurrent duplicate registration has the same public outcome.
+
             return RegistrationOutcome.Accepted;
         }
     }

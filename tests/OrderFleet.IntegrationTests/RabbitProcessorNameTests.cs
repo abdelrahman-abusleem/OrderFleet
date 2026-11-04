@@ -47,7 +47,7 @@ public sealed class RabbitProcessorNameTests(RabbitFixture broker) : IClassFixtu
         await using (var original = await RabbitSession.OpenAsync(options, deadline.Token))
         {
             await original.Channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: deadline.Token);
-            // Deliberately omit this new test queue's dead-letter destination.
+
             await original.Channel.BasicPublishAsync("", queue, true,
                 new BasicProperties { Persistent = true, MessageId = id, Type = "order.cancelled.v1" }, "{}"u8.ToArray(), deadline.Token);
             var delivery = await GetAsync(original.Channel, queue, deadline.Token);

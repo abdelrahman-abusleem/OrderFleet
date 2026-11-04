@@ -92,7 +92,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         using var scope = scopes.CreateScope();
         try { await scope.ServiceProvider.GetRequiredService<SettleCancelledPayment>().ExecuteAsync(payment.MessageId, payment.OrderId, ct); }
-        catch (DbUpdateConcurrencyException) { /* Another worker won; a fresh sweep rechecks durable state. */ }
+        catch (DbUpdateConcurrencyException) { }
     }
 
     public async Task<IReadOnlyList<Guid>> UncertainPaymentsAsync(DateTimeOffset now, int count, CancellationToken ct)
@@ -108,7 +108,7 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
     {
         using var scope = scopes.CreateScope();
         try { await scope.ServiceProvider.GetRequiredService<ReconcilePaymentCapture>().ExecuteAsync(orderId, ct); }
-        catch (DbUpdateConcurrencyException) { /* Safe to retry the read-only reconciliation next sweep. */ }
+        catch (DbUpdateConcurrencyException) { }
     }
 
     public async Task<IReadOnlyList<Guid>> OrphanAuthorizationsAsync(DateTimeOffset cutoff, DateTimeOffset now, int count, CancellationToken ct)
@@ -150,8 +150,8 @@ public sealed class EfRecoveryStore(IDbContextFactory<OrderFleetDbContext> conte
     public async Task ResolveObsoleteFailuresAsync(DateTimeOffset now, int count, CancellationToken ct)
     {
         await using var context = await contexts.CreateDbContextAsync(ct);
-        // Resolve diagnostic claims when a concurrent actor already committed the
-        // intended terminal/current-state result after a lost local acknowledgement.
+
+
         await context.RecoveryWorkFailures.Where(f => f.ResolvedAtUtc == null && (
                 (f.Operation == RecoveryWork.AcceptanceTimeout && !context.Orders.Any(o => o.Id == f.ResourceId && o.Status == OrderStatus.Created))
                 || (f.Operation == RecoveryWork.AssignmentTimeout && !context.Orders.Any(o => o.AssignmentId == f.ResourceId && o.Status == OrderStatus.Assigned))

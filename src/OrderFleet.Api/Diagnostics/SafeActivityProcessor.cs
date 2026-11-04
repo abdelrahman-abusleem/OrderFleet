@@ -19,8 +19,8 @@ public sealed class SafeActivityProcessor : BaseProcessor<Activity>
             foreach (var key in current.Baggage.Select(x => x.Key).Distinct().ToArray()) current.SetBaggage(key, null);
         foreach (var fact in activity.Events)
         {
-            // Fail closed for a library that bypasses the public exception recorder
-            // and attaches unreviewed immutable event payloads directly.
+
+
             var redactedException = fact.Name == "exception" && fact.Tags.All(tag =>
                 tag.Key is "exception.message" or "exception.stacktrace" ? Equals(tag.Value, "[redacted]")
                 : tag.Key == "exception.type" && tag.Value is string type && type.Length <= 200
@@ -29,7 +29,7 @@ public sealed class SafeActivityProcessor : BaseProcessor<Activity>
         }
         foreach (var key in activity.TagObjects.Select(x => x.Key).Where(x => !AllowedTags.Contains(x)).ToArray())
             activity.SetTag(key, null);
-        activity.SetStatus(activity.Status, null); // Exception descriptions may contain provider/customer data.
+        activity.SetStatus(activity.Status, null);
         if (activity.Source.Name == "Npgsql") activity.DisplayName = "postgresql.command";
         else if (activity.Source.Name == "Microsoft.AspNetCore") activity.DisplayName = "http.request";
     }

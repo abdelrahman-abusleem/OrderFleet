@@ -22,7 +22,7 @@ public sealed class OrderCommands(IOrderTransitionStore store, IRestaurantAccess
         now = clock.UtcNow;
         if (now >= delivery.AcceptanceDeadline)
         {
-            // Preserve the financial fact for timeout compensation, never accept late.
+
             await payments.SaveAsync(cancellationToken);
             throw new OperationConflictException("The restaurant acceptance deadline has elapsed.");
         }

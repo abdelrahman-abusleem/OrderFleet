@@ -23,7 +23,7 @@ try {
         }
     }
     [IO.File]::WriteAllText((Join-Path $bootstrapRoot '.env'), $bootstrapText)
-    # Do not print config/env: it contains credentials. Never touches legacy service.
+    
     docker compose --project-name $ProjectName --profile app config --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Compose configuration validation failed.' }
     if (-not $NoBuild) {

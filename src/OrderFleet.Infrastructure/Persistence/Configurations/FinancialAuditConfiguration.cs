@@ -20,6 +20,6 @@ public sealed class FinancialAuditConfiguration : IEntityTypeConfiguration<Finan
         builder.Property(x => x.Currency).HasMaxLength(3).IsRequired();
         builder.Property(x => x.Amount).HasColumnType("numeric");
         builder.HasIndex(x => new { x.OrderId, x.OccurredAtUtc });
-        // Retain financial history independently of future operational row retention.
+
     }
 }

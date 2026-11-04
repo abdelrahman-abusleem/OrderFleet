@@ -5,8 +5,8 @@ using Serilog.Parsing;
 
 namespace OrderFleet.Api.Diagnostics;
 
-// Privacy is applied before every exporter, including injected test sinks.
-// Unknown warnings/errors become useful controlled incidents, never raw dumps.
+
+
 public sealed class SafeLogSink(Serilog.Core.Logger output) : ILogEventSink, IDisposable
 {
     private readonly SafeLogPolicy policy = new();

@@ -40,8 +40,8 @@ public sealed class OutboxRelay(IOutboxStore store, IEventPublisher publisher, I
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception error)
             {
-                // Publication is confirmed. Leave this lease unchanged for expiry;
-                // a later delivery may duplicate the fact, so consumers use Inbox.
+
+
                 logger.LogWarning("Outbox completion deferred {MessageId} {FailureType}", lease.Message.MessageId, error.GetType().Name);
             }
         }

@@ -11,8 +11,8 @@ public sealed class WorkerHealthOptions
     public int ProbeSeconds { get; set; } = 5;
 }
 
-// Explicit process-local operational state only. Correctness still lives in DB
-// leases/transactions. Monotonic time avoids wall-clock adjustments hiding stalls.
+
+
 public sealed class WorkerProgress(TimeProvider time, IOptions<WorkerHealthOptions> options)
 {
     public static readonly IReadOnlyList<string> Names = Array.AsReadOnly(new[] { WorkerNames.Outbox, WorkerNames.Payments, WorkerNames.Dispatch, WorkerNames.Realtime, WorkerNames.Financial, WorkerNames.Recovery, WorkerNames.Operations });
@@ -36,7 +36,7 @@ public sealed class WorkerProgress(TimeProvider time, IOptions<WorkerHealthOptio
         lock (gate)
         {
             var entry = entries[worker];
-            if (idleProbe && entry.Busy) return; // A live socket must not conceal a stuck handler.
+            if (idleProbe && entry.Busy) return;
             entry.Busy = false; entry.State = "Running"; entry.Progress = time.GetTimestamp(); entry.LastSuccess = time.GetUtcNow();
         }
     }

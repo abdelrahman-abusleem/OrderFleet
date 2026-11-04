@@ -62,7 +62,7 @@ public sealed class FinancialArchiveTests(PostgresFixture postgres, RabbitFixtur
         {
             var message = await GetAsync(first.Channel, queue);
             await ArchiveAsync(factory, EventEnvelopeCodec.Decode(message.Body, message.BasicProperties.MessageId, message.BasicProperties.Type));
-            // Crash gap: archive+Inbox committed; deliberately no broker ACK.
+
         }
         await using var resumed = await RabbitSession.OpenAsync(options, CancellationToken.None);
         var redelivered = await GetAsync(resumed.Channel, queue); Assert.True(redelivered.Redelivered);

@@ -26,8 +26,10 @@ public sealed class OutboxOutageTests(PostgresFixture postgres, RabbitFixture ra
         }
         var settings = new RabbitOptions
         {
-            Uri = rabbit.ConnectionString, Prefix = "outage-" + Guid.NewGuid().ToString("N"),
-            OutboxMaxAttempts = 10, PublishTimeoutSeconds = 1
+            Uri = rabbit.ConnectionString,
+            Prefix = "outage-" + Guid.NewGuid().ToString("N"),
+            OutboxMaxAttempts = 10,
+            PublishTimeoutSeconds = 1
         };
         var store = new PostgresOutboxStore(new TestContextFactory(postgres));
         await rabbit.StopAsync();

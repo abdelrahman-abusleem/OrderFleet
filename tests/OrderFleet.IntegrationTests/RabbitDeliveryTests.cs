@@ -176,14 +176,14 @@ public sealed class RabbitDeliveryTests(PostgresFixture postgres, RabbitFixture 
         var lease = Assert.Single(claims, x => x.Message.AggregateId == orderId && x.Message.Type == "order.cancelled.v1");
         await using var publisher = new RabbitEventPublisher(Microsoft.Extensions.Options.Options.Create(options));
         await publisher.PublishAsync(lease.Message, CancellationToken.None);
-        // Crash gap: confirmed publication, but no Outbox completion.
+
         await using (var channelSession = await RabbitSession.OpenAsync(options, CancellationToken.None))
         {
             var delivery = await GetAsync(channelSession.Channel, RabbitTopology.Payments(options.Prefix));
             var envelope = EventEnvelopeCodec.Decode(delivery.Body, delivery.BasicProperties.MessageId, delivery.BasicProperties.Type);
             using var scope = factory.Services.CreateScope();
             await scope.ServiceProvider.GetRequiredService<CancelledPaymentEventHandler>().HandleAsync(envelope, CancellationToken.None);
-            // Crash gap: committed payment/Inbox, deliberately omit broker ACK.
+
         }
         await using var resumed = await RabbitSession.OpenAsync(options, CancellationToken.None);
         var redelivery = await GetAsync(resumed.Channel, RabbitTopology.Payments(options.Prefix));
@@ -273,7 +273,7 @@ public sealed class RabbitDeliveryTests(PostgresFixture postgres, RabbitFixture 
         var id = Guid.NewGuid();
         var message = new IntegrationEvent(Guid.NewGuid(), "payment.authorized.v1", 1, DateTimeOffset.UtcNow, id, null,
             JsonSerializer.Serialize(new { orderId = id }));
-        await publisher.PublishAsync(message, CancellationToken.None); // Establish durable topology.
+        await publisher.PublishAsync(message, CancellationToken.None);
         await using var session = await RabbitSession.OpenAsync(options, CancellationToken.None);
         await session.Channel.QueueDeleteAsync(RabbitTopology.Financial(options.Prefix), ifUnused: false, ifEmpty: false);
         await Assert.ThrowsAsync<RabbitMQ.Client.Exceptions.PublishReturnException>(() => publisher.PublishAsync(message with { MessageId = Guid.NewGuid() }, CancellationToken.None));

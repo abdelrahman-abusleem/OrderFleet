@@ -25,8 +25,8 @@ public sealed class EfEtaStore(OrderFleetDbContext context) : IEtaStore
         if (source is null) return null;
         var pickup = new Point((double)source.PickupLongitude, (double)source.PickupLatitude) { SRID = 4326 };
         var destination = new Point((double)source.DestinationLongitude, (double)source.DestinationLatitude) { SRID = 4326 };
-        // Execute on PostGIS geography, never NTS client-side degrees. Only derived
-        // distances cross the Application port; precise destination stays private.
+
+
         var route = await context.Database.SqlQuery<double>($"""
             SELECT ST_Distance({pickup}::geography, {destination}::geography) AS "Value"
             """).SingleAsync(ct);

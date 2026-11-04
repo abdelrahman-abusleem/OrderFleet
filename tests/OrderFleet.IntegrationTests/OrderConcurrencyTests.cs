@@ -71,7 +71,7 @@ public sealed class OrderConcurrencyTests(PostgresFixture fixture) : IClassFixtu
             currentAssignment = current.Assign(courier, Now.AddMinutes(2));
             await currentContext.SaveChangesAsync();
         }
-        // The old in-memory aggregate still considers the old fence valid.
+
         stale.MarkPickedUp(courier, oldAssignment, Now.AddMinutes(3));
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => staleContext.SaveChangesAsync());
         await using var verify = fixture.CreateContext();

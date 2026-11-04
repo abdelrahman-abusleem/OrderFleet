@@ -22,7 +22,7 @@ public sealed class RecoveryQueryPlanTests(ITestOutputHelper output)
         await using (var seed = database.Fixture.CreateContext())
         {
             seed.Database.SetCommandTimeout(120);
-            // This path is source-controlled benchmark input, never a developer DB.
+
             var root = new DirectoryInfo(AppContext.BaseDirectory);
             while (root is not null && !File.Exists(Path.Combine(root.FullName, "OrderFleet.slnx"))) root = root.Parent;
             Assert.NotNull(root);

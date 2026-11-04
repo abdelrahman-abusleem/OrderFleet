@@ -5,8 +5,8 @@ namespace OrderFleet.Infrastructure.Persistence;
 
 internal static class CourierCandidateQuery
 {
-    // Caller already holds the Order lock in its transaction. Lock only the
-    // nearest available courier, skip competing claims, break distance ties by Id.
+
+
     internal static Task<Courier?> ClaimNearestAsync(OrderFleetDbContext context, decimal longitude, decimal latitude,
         DateTimeOffset oldest, DateTimeOffset latest, double radiusMeters, CancellationToken ct) =>
         context.Couriers.FromSqlInterpolated($"""

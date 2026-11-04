@@ -86,7 +86,7 @@ public sealed class RealtimeApiTests(PostgresFixture fixture) : IClassFixture<Po
         var accepted = await updates.Reader.ReadAsync(timeout.Token);
         Assert.Equal("Accepted", accepted.Status);
         Assert.Equal(2, accepted.Sequence);
-        // An older persisted fact must not regress the connected client's snapshot.
+
         await PublishCommittedAsync(factory, id, "order.created.v1");
         Assert.False(updates.Reader.TryRead(out _));
         await connection.StopAsync();

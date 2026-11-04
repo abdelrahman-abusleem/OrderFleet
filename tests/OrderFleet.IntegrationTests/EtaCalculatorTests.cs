@@ -12,7 +12,7 @@ public sealed class EtaCalculatorTests
     public void FreshPickup_UsesCourierDistance_AndLabelsApproximation()
     {
         var result = calculator.Calculate(new("PickedUp", 20000, 0, 1000, Now, Now.AddMinutes(-10)), Now);
-        Assert.Equal(5, result.Minutes); // 1km *1.25 /30kmh =2.5m, plus2m handoff, rounded up.
+        Assert.Equal(5, result.Minutes);
         Assert.Equal("Approximate", result.Confidence);
         Assert.True(result.IsApproximate);
     }

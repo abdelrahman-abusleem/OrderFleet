@@ -10,7 +10,7 @@ public sealed class ReconcilePaymentCapture(IPaymentStore store, IPaymentProvide
     {
         var payment = await store.FindAsync(orderId, ct);
         if (payment?.State != PaymentState.PendingReconciliation) return;
-        // Read-only provider reconciliation must not initiate any financial effect.
+
         var actual = await provider.FindCaptureAsync(payment.AuthorizationId, ct);
         if (actual is null) return;
         if (actual.Succeeded)

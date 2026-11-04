@@ -6,7 +6,7 @@ namespace OrderFleet.Domain.Tests;
 
 public class OrderCancellationTests
 {
-    // Explicit specification rows keep expectations independent of the production switch.
+
     [Theory]
     [InlineData(OrderStatus.Created, CancellationReason.CustomerRequested)]
     [InlineData(OrderStatus.Created, CancellationReason.RestaurantRejected)]

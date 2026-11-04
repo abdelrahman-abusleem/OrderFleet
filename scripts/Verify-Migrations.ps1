@@ -1,4 +1,4 @@
-# Uses only a new disposable container. Never targets the developer database.
+
 $ErrorActionPreference = 'Stop'
 $migrationDotnet = 'dotnet'
 $migrationPreviousRoot = $env:DOTNET_ROOT

@@ -76,7 +76,8 @@ public static class IdentityRegistration
                 return RateLimitPartition.GetFixedWindowLimiter(bucket + ":" + actor, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = create ? limits.CreatePerMinute : read ? limits.ReadPerMinute : limits.WritePerMinute,
-                    Window = TimeSpan.FromMinutes(1), QueueLimit = 0
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
                 });
             });
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -171,10 +172,11 @@ public static class IdentityRegistration
                     var database = context.HttpContext.RequestServices.GetRequiredService<OrderFleetDbContext>();
                     var current = await (from grant in database.UserRoles.AsNoTracking()
                                          join role in database.Roles on grant.RoleId equals role.Id
-                                         where grant.UserId == id select role.Name).ToArrayAsync(context.HttpContext.RequestAborted);
+                                         where grant.UserId == id
+                                         select role.Name).ToArrayAsync(context.HttpContext.RequestAborted);
                     foreach (var identity in context.Principal.Identities.OfType<ClaimsIdentity>())
                         foreach (var claim in identity.FindAll("role").Where(claim => privileged.Contains(claim) && !current.Contains(claim.Value, StringComparer.Ordinal)).ToArray())
-                                identity.RemoveClaim(claim);
+                            identity.RemoveClaim(claim);
                 }
             }
         };

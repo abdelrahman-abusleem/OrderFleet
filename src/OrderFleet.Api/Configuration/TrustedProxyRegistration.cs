@@ -26,8 +26,8 @@ public static class TrustedProxyRegistration
         services.AddOptions<ForwardedHeadersOptions>().Configure<IOptions<TrustedProxyOptions>>((forwarded, configured) =>
         {
             var settings = configured.Value;
-            // Empty known-address lists mean trust-all to the framework. Keep
-            // header processing disabled unless a nonempty explicit list validates.
+
+
             forwarded.KnownProxies.Clear();
             forwarded.KnownIPNetworks.Clear();
             forwarded.ForwardLimit = 1;

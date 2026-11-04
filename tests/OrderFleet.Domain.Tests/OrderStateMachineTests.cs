@@ -77,7 +77,7 @@ public class OrderStateMachineTests
             _ => throw new ArgumentOutOfRangeException(nameof(operation))
         };
 
-        // Retrying a rejected operation must also be harmless.
+
         for (var attempt = 0; attempt < 2; attempt++)
         {
             Assert.Throws<DomainException>(act);

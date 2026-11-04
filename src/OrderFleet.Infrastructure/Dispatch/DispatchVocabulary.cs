@@ -1,6 +1,6 @@
 namespace OrderFleet.Infrastructure.Dispatch;
 
-// Constants preserve the established string-valued persistence/public contracts.
+
 public static class DispatchJobStatuses
 {
     public const string Pending = "Pending";

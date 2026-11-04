@@ -1,5 +1,3 @@
--- Benchmark only: executed against a newly created Testcontainers database.
--- No production code uses this bulk historical dataset or bypasses the Domain API.
 CREATE TEMP TABLE recovery_seed AS
 SELECT i, md5('order-' || i)::uuid AS order_id, md5('authorization-' || i)::uuid AS authorization_id,
     md5('courier-' || i)::uuid AS courier_id, md5('assignment-' || i)::uuid AS assignment_id

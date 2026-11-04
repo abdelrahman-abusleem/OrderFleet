@@ -69,14 +69,14 @@ public class OrderItemTests
     [Fact]
     public void Constructor_TrimIsAppliedBeforeTheLengthLimit()
     {
-        // Raw length 202, trimmed content exactly at the limit: allowed.
+
         var content = new string('a', OrderItem.MaxNameLength);
         var item = new OrderItem(Guid.NewGuid(), $"  {content}  ", 1m, 1);
         Assert.Equal(content, item.Name);
     }
 
-    // Money invariant: unit prices are strictly positive (zero is not a
-    // sellable price) and may carry at most two halalas.
+
+
     public static TheoryData<decimal> InvalidPrices => new()
     {
         0m, -0.01m, -1m, decimal.MinValue, 0.001m, 0.004m, 0.005m,
@@ -94,10 +94,10 @@ public class OrderItemTests
 
     public static TheoryData<decimal, int, decimal> ValidPrices => new()
     {
-        { 0.01m, 1, 0.01m },                       // smallest permitted halala
+        { 0.01m, 1, 0.01m },
         { 0.10m, 3, 0.30m },
         { 1.23m, 2, 2.46m },
-        { 1.2300m, 2, 2.4600m },                   // trailing zeros preserve the value
+        { 1.2300m, 2, 2.4600m },
         { 1.000m, 1, 1m },
         { 0.01m, int.MaxValue, 21474836.47m },
         { 7922816251426433759354395033m, 10, 79228162514264337593543950330m },
@@ -126,10 +126,10 @@ public class OrderItemTests
         Assert.Equal("quantity", exception.ParamName);
     }
 
-    // Money invariant: multiplication overflow is rejected during
-    // construction, so an unpriceable item is never exposed and TotalPrice
-    // can never fail when read. Every pair below passes the individual
-    // price and quantity rules; only their product is unrepresentable.
+
+
+
+
     public static TheoryData<decimal, int> OverflowingLineTotals => new()
     {
         { decimal.MaxValue, 2 },
@@ -150,20 +150,20 @@ public class OrderItemTests
     [Fact]
     public void Constructor_AcceptsTheHighestSafelyRepresentableLineTotalForQuantity()
     {
-        // The largest unit price whose product with 4 stays representable:
-        // 4 x 19807040628566084398385987583 = decimal.MaxValue - 3.
+
+
         var item = new OrderItem(Guid.NewGuid(), "Wrap", 19807040628566084398385987583m, 4);
         Assert.Equal(19807040628566084398385987583m, item.UnitPrice);
         Assert.Equal(decimal.MaxValue - 3m, item.TotalPrice);
     }
 
-    // The superseded division-based guard computed its admitted maximum as
-    // decimal.Truncate(decimal.MaxValue / quantity); decimal division rounds
-    // to the nearest representable value, which can round UP past the true
-    // floor. The guard must never admit a boundary whose line total is then
-    // unrepresentable, and rejection must use the domain's own
-    // ArgumentOutOfRangeException — never a raw OverflowException from the
-    // multiplication itself.
+
+
+
+
+
+
+
     [Fact]
     public void Constructor_RejectsItsOwnGuardBoundary_ForEveryQuantity_Cleanly()
     {
@@ -178,12 +178,12 @@ public class OrderItemTests
             }
             catch (ArgumentOutOfRangeException)
             {
-                // Rejected cleanly before multiplication: acceptable.
+
             }
             catch (OverflowException)
             {
-                // The guard admitted this unit price although
-                // unitPrice x quantity is unrepresentable.
+
+
                 overflowQuantities.Add(quantity);
             }
         }
@@ -195,9 +195,9 @@ public class OrderItemTests
             $"quantities: {string.Join(", ", overflowQuantities)}");
     }
 
-    // decimal.MaxValue / 4 rounds UP to 19807040628566084398385987584, so the
-    // superseded division-based guard admitted exactly this value for
-    // quantity 4 - whose line total is decimal.MaxValue + 1.
+
+
+
     [Fact]
     public void Constructor_RejectsTheGuardBoundaryWhoseLineTotalExceedsDecimalMaximum()
     {

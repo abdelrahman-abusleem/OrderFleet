@@ -12,8 +12,8 @@ public sealed class EfFinancialArchive(OrderFleetDbContext context, IClock clock
     {
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
         var now = clock.UtcNow;
-        // A unique key serializes competing deliveries across processes; archive
-        // and Inbox commit together. Never update an existing immutable fact.
+
+
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "FinancialAuditRecords" ("MessageId", "Type", "Version", "OccurredAtUtc", "PaymentId", "OrderId",
                 "AuthorizationId", "Amount", "Currency", "State", "ArchivedAtUtc")
@@ -22,7 +22,7 @@ public sealed class EfFinancialArchive(OrderFleetDbContext context, IClock clock
             """, ct);
         var stored = await context.FinancialAuditRecords.AsNoTracking().SingleAsync(x => x.MessageId == envelope.MessageId, ct);
         if (!stored.Matches(envelope, fact)) throw new InvalidDataException("Financial message identity was reused with different content.");
-        // Inbox also uses an atomic conflict-safe insert for simultaneous replay.
+
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "InboxMessages" ("MessageId", "Consumer", "ProcessedAtUtc")
             VALUES ({envelope.MessageId}, {Consumer}, {now}) ON CONFLICT ("MessageId", "Consumer") DO NOTHING

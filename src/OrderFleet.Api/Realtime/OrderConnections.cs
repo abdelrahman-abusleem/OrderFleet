@@ -3,8 +3,8 @@ using OrderFleet.Application.Identity;
 
 namespace OrderFleet.Api.Realtime;
 
-// Transport connection state only. Business state and permission decisions remain
-// in Application/DB; no order authority is granted by group membership.
+
+
 public sealed class OrderConnections
 {
     private readonly ConcurrentDictionary<string, OrderConnection> connections = new();

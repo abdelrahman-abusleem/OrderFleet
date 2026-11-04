@@ -38,8 +38,8 @@ public sealed class EfOperationsStore(OrderFleetDbContext context) : IOperations
     public async Task RetryOutboxAsync(Guid id, Guid actorId, string key, DateTimeOffset now, CancellationToken ct)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
-        // Lock a real actor row first to serialize same-actor operation keys across
-        // different targets without relying on an in-process mutex.
+
+
         await LockActorAsync(actorId, ct);
         if (await ReplayAsync(actorId, OperationNames.RetryOutbox, key, id, ct)) return;
         var message = await context.OutboxMessages.FromSqlInterpolated(

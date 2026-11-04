@@ -22,8 +22,8 @@ public sealed class ExpiredDataCleanup(IDbContextFactory<OrderFleetDbContext> co
         var dispatchCutoff = now.AddDays(-settings.FinishedDispatchDays);
         await using var db = await contexts.CreateDbContextAsync(ct);
 
-        // Publication alone does not prove consumption. In particular, cancellation
-        // facts remain a recovery source until compensation has actually settled.
+
+
         var outbox = db.OutboxMessages.Where(x => x.PublishedAtUtc < outboxCutoff && x.LeaseId == null && x.DeadLetteredAtUtc == null
             && ((x.Type.StartsWith(IntegrationEventTypes.PaymentPrefix)
                 && db.FinancialAuditRecords.Any(a => a.MessageId == x.Id)
@@ -40,8 +40,8 @@ public sealed class ExpiredDataCleanup(IDbContextFactory<OrderFleetDbContext> co
 
         var failures = db.RecoveryWorkFailures.Where(x => x.ResolvedAtUtc < recoveryCutoff);
         var failureKeys = failures.OrderBy(x => x.ResolvedAtUtc).ThenBy(x => x.Operation).ThenBy(x => x.ResourceId).Take(settings.BatchSize);
-        // Keep eligibility in the outer DELETE too: PostgreSQL must recheck it
-        // after waiting on a worker that reopened a previously resolved failure.
+
+
         var resolved = await DrainAsync(() => failures.AnyAsync(ct),
             () => failures.Where(x => failureKeys.Any(k => k.Operation == x.Operation && k.ResourceId == x.ResourceId)).ExecuteDeleteAsync(ct), ct);
 

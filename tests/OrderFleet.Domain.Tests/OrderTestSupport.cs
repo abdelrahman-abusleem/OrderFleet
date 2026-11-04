@@ -5,16 +5,16 @@ namespace OrderFleet.Domain.Tests;
 internal static class OrderTestSupport
 {
     internal static readonly DateTimeOffset Now = new(2026, 10, 25, 9, 0, 0, TimeSpan.Zero);
-    // "Normal business" limits. Every order produced by the helpers below
-    // fits comfortably inside them, so individual tests can opt into exotic
-    // limits explicitly without disturbing the shared ones.
+
+
+
     internal static OrderPricingLimits Limits() => new(
         maxQuantityPerItem: 99,
         maxItemsPerOrder: 20,
         maxUnitPrice: 9_999.99m,
         maxOrderTotal: 99_999.99m);
 
-    // Admits the entire decimal range for a single line.
+
     internal static OrderPricingLimits SingleItemLimits() => new(
         maxQuantityPerItem: 1,
         maxItemsPerOrder: 1,
@@ -30,7 +30,7 @@ internal static class OrderTestSupport
     internal static Order Create() =>
         Order.Create(Guid.NewGuid(), Guid.NewGuid(), [Item(), Item(3m, 1)], Limits(), Now);
 
-    // Reach each state exclusively through the public domain API.
+
     internal static Order InState(OrderStatus status)
     {
         var order = Create();

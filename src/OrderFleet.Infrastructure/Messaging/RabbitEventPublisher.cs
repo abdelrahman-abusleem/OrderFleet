@@ -39,8 +39,8 @@ public sealed class RabbitEventPublisher(IOptions<RabbitOptions> options) : IEve
                 CorrelationId = message.CorrelationId,
                 Headers = new Dictionary<string, object?> { ["traceparent"] = Encoding.ASCII.GetBytes(activity?.Id ?? message.TraceParent ?? "") }
             };
-            // With confirmation tracking, await fails on broker nack or mandatory
-            // return; only confirmed routed messages can complete their DB lease.
+
+
             await session.Channel.BasicPublishAsync(RabbitTopology.Events(options.Value.Prefix), message.Type,
                 mandatory: true, properties, bytes, timeout.Token);
         }

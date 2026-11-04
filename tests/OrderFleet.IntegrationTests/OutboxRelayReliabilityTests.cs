@@ -76,7 +76,7 @@ public sealed class OutboxRelayReliabilityTests(PostgresFixture postgres, Rabbit
         Assert.True(row.NextAttemptAtUtc > clock.GetUtcNow());
         Assert.Null(row.PublishedAtUtc);
         Assert.Null(row.DeadLetteredAtUtc);
-        // Finish this fact's retry scenario so another case cannot claim its work.
+
         var retryAt = row.NextAttemptAtUtc;
         var retry = Assert.Single(await store.ClaimAsync(1, retryAt, TimeSpan.FromSeconds(60), CancellationToken.None));
         Assert.True(await store.FailAsync(retry, retryAt, "InvalidEnvelope", 2, CancellationToken.None));

@@ -182,15 +182,15 @@ public class OrderCreationTests
         }
     }
 
-    // ------------------------------------------------------------------
-    // Order-wide policy limits (owned by Order, not by OrderItem)
-    // ------------------------------------------------------------------
+
+
+
 
     [Fact]
     public void Create_RejectsIntrinsicallyValidItems_AboveTheQuantityPolicyLimit()
     {
         var limits = new OrderPricingLimits(30, 20, 9_999.99m, 99_999.99m);
-        var item = new OrderItem(Guid.NewGuid(), "Family platter", 1m, 31); // valid on its own
+        var item = new OrderItem(Guid.NewGuid(), "Family platter", 1m, 31);
 
         var exception = Assert.Throws<ArgumentException>(() =>
             Order.Create(Guid.NewGuid(), Guid.NewGuid(), [item], limits, Now));
@@ -212,7 +212,7 @@ public class OrderCreationTests
     public void Create_RejectsIntrinsicallyValidItems_AboveTheUnitPricePolicyLimit()
     {
         var limits = new OrderPricingLimits(30, 20, 9_999.99m, 99_999.99m);
-        var item = new OrderItem(Guid.NewGuid(), "Catering tray", 10_000m, 1); // valid on its own
+        var item = new OrderItem(Guid.NewGuid(), "Catering tray", 10_000m, 1);
 
         var exception = Assert.Throws<ArgumentException>(() =>
             Order.Create(Guid.NewGuid(), Guid.NewGuid(), [item], limits, Now));
@@ -255,7 +255,7 @@ public class OrderCreationTests
     [Fact]
     public void Create_RejectsAggregateTotalAboveTheMaximumOrderTotal()
     {
-        // Individual maxima: 3 items x 2 x 100 = 600 > 599.99.
+
         var limits = new OrderPricingLimits(2, 3, 100m, 599.99m);
 
         var exception = Assert.Throws<ArgumentException>(() => Order.Create(
@@ -297,11 +297,11 @@ public class OrderCreationTests
         Assert.Equal(0.10m, order.Items[1].UnitPrice);
     }
 
-    // ------------------------------------------------------------------
-    // Monetary aggregation boundaries under valid limits
-    // ------------------------------------------------------------------
 
-    // A valid line is at least one halala, so no valid order can total zero.
+
+
+
+
     [Fact]
     public void Create_ProducesAPositiveTotal_EvenAtTheSmallestLine()
     {
@@ -318,14 +318,14 @@ public class OrderCreationTests
         Assert.Equal(decimal.MaxValue, order.TotalAmount);
     }
 
-    // Aggregate safety: every configuration Order.Create can be handed is
-    // guaranteed representable, so aggregating items at the configured
-    // maxima must not overflow.
+
+
+
     [Fact]
     public void Create_AggregatesAtTheConfiguredMonetaryMaxima_WithoutOverflow()
     {
-        // maxUnits = 4 and the highest safely representable unit price limit:
-        // 4 x 19807040628566084398385987583 = decimal.MaxValue - 3.
+
+
         var limits = new OrderPricingLimits(2, 2, 19807040628566084398385987583m, decimal.MaxValue);
 
         var order = Order.Create(Guid.NewGuid(), Guid.NewGuid(),

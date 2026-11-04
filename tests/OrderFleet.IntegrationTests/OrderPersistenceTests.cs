@@ -46,8 +46,8 @@ public sealed class OrderPersistenceTests(PostgresFixture fixture) : IClassFixtu
     {
         var order = Create();
         await SaveNewAsync(order);
-        // Adversarial writes in the disposable test DB verify constraint enforcement;
-        // production writes continue to use the public Domain API through EF.
+
+
         foreach (var invalid in new[] { "0", "-1", "0.001", "79228162514264337593543950336" })
         {
             await using var context = fixture.CreateContext();

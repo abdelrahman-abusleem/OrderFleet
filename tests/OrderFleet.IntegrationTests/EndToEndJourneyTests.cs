@@ -65,7 +65,7 @@ public sealed class EndToEndJourneyTests(PostgresFixture postgres, RabbitFixture
             var signingKey = factory.SigningKey;
             var token = customer.DefaultRequestHeaders.Authorization!.Parameter!;
             var courierToken = courier.DefaultRequestHeaders.Authorization!.Parameter!;
-            await factory.DisposeAsync(); // Actual hosted relay/consumers stop; DB and broker persist.
+            await factory.DisposeAsync();
             factory = Host(prefix, signingKey);
             using var resumed = factory.CreateClient(new() { BaseAddress = new("https://localhost") });
             resumed.DefaultRequestHeaders.Authorization = new("Bearer", courierToken);
@@ -93,8 +93,8 @@ public sealed class EndToEndJourneyTests(PostgresFixture postgres, RabbitFixture
             var profile = await verify.Couriers.SingleAsync(x => x.Id == stored.CourierId, timeout.Token);
             Assert.Equal(CourierStatus.Available, profile.Status);
             Assert.Null(profile.AssignmentId);
-            // Consumer notification can race the publisher's post-confirm mark.
-            // Assert eventual durable publication within the existing deadline.
+
+
             while (!await verify.OutboxMessages.AnyAsync(x => x.AggregateId == id && x.Type == "order.delivered.v1" && x.PublishedAtUtc != null, timeout.Token))
                 await Task.Delay(50, timeout.Token);
         }

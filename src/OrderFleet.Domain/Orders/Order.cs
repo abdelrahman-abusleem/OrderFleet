@@ -40,7 +40,7 @@ public sealed class Order
 
     public decimal TotalAmount { get; private set; }
 
-    private Order() { } // EF Core
+    private Order() { }
 
     private Order(
         Guid id,

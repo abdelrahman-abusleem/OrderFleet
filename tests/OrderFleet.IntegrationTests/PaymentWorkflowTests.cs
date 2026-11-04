@@ -40,7 +40,7 @@ public sealed class PaymentWorkflowTests(PostgresFixture fixture) : IClassFixtur
             Assert.Equal(outcome != "Declined", attempt.IsRetryable);
             Assert.Equal(outcome == "Unknown", attempt.RequiresReconciliation);
         }
-        // A new host shares only persisted provider state and the token signing key.
+
         await using var restarted = new ApiFactory(fixture, signingKey: factory.SigningKey);
         using var retry = restarted.CreateClient(new() { BaseAddress = new("https://localhost") });
         retry.DefaultRequestHeaders.Authorization = owner.DefaultRequestHeaders.Authorization;
@@ -107,7 +107,7 @@ public sealed class PaymentWorkflowTests(PostgresFixture fixture) : IClassFixtur
             var authorization = (await context.Payments.SingleAsync(x => x.OrderId == id)).AuthorizationId;
             using var scope = factory.Services.CreateScope();
             Assert.True((await scope.ServiceProvider.GetRequiredService<IPaymentProvider>().CaptureAsync(authorization, CancellationToken.None)).Succeeded);
-            // Simulates a crash after the provider committed and before the local save.
+
         }
         Assert.Equal(HttpStatusCode.NoContent, (await customer.PostAsync($"/api/v1/orders/{id}/cancel", null)).StatusCode);
         await SettleAsync(factory, id);
@@ -181,7 +181,7 @@ public sealed class PaymentWorkflowTests(PostgresFixture fixture) : IClassFixtur
             Assert.DoesNotContain("longitude", message.PayloadJson, StringComparison.OrdinalIgnoreCase);
         });
         using var scope = factory.Services.CreateScope();
-        // Orphan cleanup must never void an attached order's authorization.
+
         await scope.ServiceProvider.GetRequiredService<IPaymentProvider>().ReleaseUnusedAuthorizationAsync(stored.AuthorizationId, CancellationToken.None);
         var settlements = await Task.WhenAll(Enumerable.Range(0, 4).Select(async _ =>
         {

@@ -51,7 +51,7 @@ public sealed class EfCourierStore(OrderFleetDbContext context, IClock clock, IO
         var policy = events?.Value ?? new CourierLocationEventOptions();
         if (now - position.LastEventAtUtc.Value >= TimeSpan.FromSeconds(policy.MinimumIntervalSeconds)) return true;
         var current = position.Location;
-        // Geography distance is evaluated by PostGIS in metres, not NTS degrees.
+
         var distance = await context.CourierPositions.Where(x => x.CourierId == courier.Id)
             .Select(x => x.LastEventLocation!.Distance(current)).SingleAsync(ct);
         return distance >= policy.MinimumDistanceMeters;

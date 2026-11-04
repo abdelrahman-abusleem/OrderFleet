@@ -2,8 +2,8 @@ using System.Diagnostics;
 
 namespace OrderFleet.Api.Diagnostics;
 
-// ActivityEvent tags are immutable after capture. Redact through the .NET public
-// exception-recorder callback before the runtime creates the exception event.
+
+
 public sealed class SafeExceptionListener : IDisposable
 {
     private readonly ActivityListener listener = new()

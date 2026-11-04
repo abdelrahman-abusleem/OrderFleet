@@ -23,8 +23,8 @@ public sealed class DispatchConcurrencyTests(PostgresFixture fixture) : IClassFi
         using var customer = await ClientAsync(factory, "Customer");
         var created = await CreateAsync(customer, Request(restaurant, product), Guid.NewGuid().ToString("N"));
         var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
-        // Inject a legal Domain state with an incomplete Application payment workflow;
-        // the dispatch boundary must independently reject financial ineligibility.
+
+
         await using (var context = fixture.CreateContext())
         {
             var order = await context.Orders.SingleAsync(x => x.Id == id);

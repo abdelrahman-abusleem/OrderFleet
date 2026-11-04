@@ -72,7 +72,7 @@ public sealed class TelemetryTests(PostgresFixture fixture) : IClassFixture<Post
         var response = await customer.SendAsync(request);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
-        await DispatchConcurrencyTests.DispatchAsync(factory, id); // Real financial/state eligibility rejection is instrumented.
+        await DispatchConcurrencyTests.DispatchAsync(factory, id);
         Assert.Equal(HttpStatusCode.Forbidden, (await customer.GetAsync("/api/v1/operations/summary?access_token=" + secret)).StatusCode);
         await using (var context = await factory.Services.GetRequiredService<IDbContextFactory<OrderFleet.Infrastructure.Persistence.OrderFleetDbContext>>().CreateDbContextAsync())
             await Assert.ThrowsAsync<Npgsql.PostgresException>(() => context.Database.ExecuteSqlInterpolatedAsync($"SELECT {secret}::integer"));
