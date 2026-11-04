@@ -69,6 +69,8 @@ public sealed class OperationsApiTests(PostgresFixture fixture) : IClassFixture<
         var store = new PostgresOutboxStore(new TestContextFactory(fixture));
         var claims = await store.ClaimAsync(100, now, TimeSpan.FromSeconds(60), CancellationToken.None);
         Assert.True(await store.FailAsync(claims.Single(x => x.Message.MessageId == id), now, "BrokerUnavailable", 1, CancellationToken.None));
+        await using (var historical = fixture.CreateContext())
+            await historical.OutboxMessages.Where(x => x.Id == id).ExecuteUpdateAsync(set => set.SetProperty(x => x.DeadLetteredAtUtc, now));
         var key = Guid.NewGuid().ToString("N");
         var replies = await Task.WhenAll(RetryAsync(admin, $"/api/v1/operations/outbox/{id}/retry", key),
             RetryAsync(admin, $"/api/v1/operations/outbox/{id}/retry", key));

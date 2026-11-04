@@ -79,7 +79,7 @@ public sealed class OutboxRelayReliabilityTests(PostgresFixture postgres, Rabbit
         // Finish this fact's retry scenario so another case cannot claim its work.
         var retryAt = row.NextAttemptAtUtc;
         var retry = Assert.Single(await store.ClaimAsync(1, retryAt, TimeSpan.FromSeconds(60), CancellationToken.None));
-        Assert.True(await store.FailAsync(retry, retryAt, "BrokerUnavailable", 2, CancellationToken.None));
+        Assert.True(await store.FailAsync(retry, retryAt, "InvalidEnvelope", 2, CancellationToken.None));
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed class OutboxRelayReliabilityTests(PostgresFixture postgres, Rabbit
         var row = await verify.OutboxMessages.SingleAsync(x => x.Id == fact.MessageId);
         Assert.Equal(now.AddSeconds(17), row.NextAttemptAtUtc);
         var retry = Assert.Single(await store.ClaimAsync(1, row.NextAttemptAtUtc, TimeSpan.FromSeconds(60), CancellationToken.None));
-        Assert.True(await store.FailAsync(retry, row.NextAttemptAtUtc, "BrokerUnavailable", 2, CancellationToken.None));
+        Assert.True(await store.FailAsync(retry, row.NextAttemptAtUtc, "InvalidEnvelope", 2, CancellationToken.None));
     }
 
     private sealed class FixedBackoff : IRetryBackoff

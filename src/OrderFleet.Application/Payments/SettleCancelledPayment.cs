@@ -19,7 +19,14 @@ public sealed class SettleCancelledPayment(IPaymentStore store, IPaymentProvider
         if (settled.State == ProviderPaymentState.Refunded)
         {
             if (payment.State is PaymentState.Authorized or PaymentState.Failed or PaymentState.PendingReconciliation)
-                payment.RecordCapture(settled.CapturedAt ?? settled.OccurredAt);
+            {
+                var capturedAt = settled.CapturedAt ?? settled.OccurredAt;
+                if (payment.RecordCapture(capturedAt))
+                {
+                    store.RecordFact(payment, IntegrationEventTypes.PaymentCaptured, capturedAt);
+                    store.RecordAttempt(payment, CaptureClassification.Succeeded, capturedAt);
+                }
+            }
             if (payment.RecordRefund(settled.OccurredAt)) store.RecordFact(payment, IntegrationEventTypes.PaymentRefunded, settled.OccurredAt);
         }
         else if (settled.State == ProviderPaymentState.Voided)

@@ -56,7 +56,7 @@ public sealed class OutboxLeaseTests(PostgresFixture fixture) : IClassFixture<Po
     }
 
     [Fact]
-    public async Task PublishFailures_BackOff_AndBecomeVisibleDeadLettersAtBound()
+    public async Task InvalidEnvelopeFailures_BackOff_AndBecomeVisibleDeadLettersAtBound()
     {
         var now = DateTimeOffset.UtcNow;
         var id = Guid.NewGuid();
@@ -67,17 +67,17 @@ public sealed class OutboxLeaseTests(PostgresFixture fixture) : IClassFixture<Po
         }
         var store = new PostgresOutboxStore(new TestContextFactory(fixture));
         var first = Assert.Single(await store.ClaimAsync(1, now, TimeSpan.FromSeconds(10), CancellationToken.None));
-        Assert.True(await store.FailAsync(first, now, "BrokerUnavailable", 2, CancellationToken.None));
+        Assert.True(await store.FailAsync(first, now, "InvalidEnvelope", 2, CancellationToken.None));
         Assert.Empty(await store.ClaimAsync(1, now.AddMilliseconds(500), TimeSpan.FromSeconds(10), CancellationToken.None));
         var second = Assert.Single(await store.ClaimAsync(1, now.AddSeconds(3), TimeSpan.FromSeconds(10), CancellationToken.None));
-        Assert.True(await store.FailAsync(second, now.AddSeconds(3), "BrokerUnavailable", 2, CancellationToken.None));
+        Assert.True(await store.FailAsync(second, now.AddSeconds(3), "InvalidEnvelope", 2, CancellationToken.None));
         Assert.Empty(await store.ClaimAsync(1, now.AddDays(1), TimeSpan.FromSeconds(10), CancellationToken.None));
         await using var verify = fixture.CreateContext();
         var row = await verify.OutboxMessages.SingleAsync(x => x.Id == id);
         Assert.Equal(2, row.Attempts);
         Assert.NotNull(row.DeadLetteredAtUtc);
         Assert.Null(row.PublishedAtUtc);
-        Assert.Equal("BrokerUnavailable", row.LastErrorCode);
+        Assert.Equal("InvalidEnvelope", row.LastErrorCode);
     }
 }
 

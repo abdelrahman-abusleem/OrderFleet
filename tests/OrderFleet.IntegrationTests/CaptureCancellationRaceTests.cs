@@ -79,7 +79,21 @@ public sealed class CaptureCancellationRaceTests(PostgresFixture fixture) : ICla
         Assert.Equal(1, await verify.OutboxMessages.CountAsync(x => x.AggregateId == id && x.Type == financialType, timeout.Token));
         Assert.Equal(1, await verify.MockPaymentEffects.CountAsync(x => x.AuthorizationId == payment.AuthorizationId && x.Operation == providerOperation && x.Succeeded, timeout.Token));
         Assert.Equal(captureFirst ? 1 : 0, await verify.MockPaymentEffects.CountAsync(x => x.AuthorizationId == payment.AuthorizationId && x.Operation == "Capture" && x.Succeeded, timeout.Token));
-        Assert.Equal(2, await verify.FinancialAuditRecords.CountAsync(x => x.OrderId == id, timeout.Token));
+        Assert.Equal(captureFirst ? 3 : 2, await verify.FinancialAuditRecords.CountAsync(x => x.OrderId == id, timeout.Token));
+        var history = await verify.OutboxMessages.Where(x => x.AggregateId == id && x.Type.StartsWith("payment."))
+            .OrderBy(x => x.Sequence).Select(x => x.Type).ToArrayAsync(timeout.Token);
+        Assert.Equal(captureFirst
+            ? ["payment.authorized.v1", "payment.captured.v1", "payment.refunded.v1"]
+            : new[] { "payment.authorized.v1", "payment.voided.v1" }, history);
+        Assert.Equal(captureFirst ? 1 : 0, await verify.PaymentCaptureAttempts.CountAsync(x => x.PaymentId == payment.Id
+            && x.Classification == CaptureClassification.Succeeded, timeout.Token));
+        if (captureFirst)
+        {
+            var capture = await verify.FinancialAuditRecords.SingleAsync(x => x.OrderId == id && x.Type == "payment.captured.v1", timeout.Token);
+            Assert.Equal("Captured", capture.State);
+            Assert.Equal(payment.CapturedAt, capture.OccurredAtUtc);
+            Assert.True(capture.OccurredAtUtc <= payment.SettledAt);
+        }
         var settledFact = await verify.FinancialAuditRecords.SingleAsync(x => x.OrderId == id && x.Type == financialType, timeout.Token);
         Assert.Equal(payment.Id, settledFact.PaymentId);
         Assert.Equal(payment.Amount, settledFact.Amount);

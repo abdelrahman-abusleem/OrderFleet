@@ -25,7 +25,8 @@ public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> c
                   AND "NextAttemptAtUtc" <= {now} AND ("LeasedUntilUtc" IS NULL OR "LeasedUntilUtc" <= {now})
                 ORDER BY "Sequence" LIMIT {count} FOR UPDATE SKIP LOCKED
             )
-            UPDATE "OutboxMessages" AS target SET "LeaseId" = {leaseId}, "LeasedUntilUtc" = {until}, "Attempts" = target."Attempts" + 1
+            UPDATE "OutboxMessages" AS target SET "LeaseId" = {leaseId}, "LeasedUntilUtc" = {until},
+                "Attempts" = CASE WHEN target."Attempts" < 2147483647 THEN target."Attempts" + 1 ELSE target."Attempts" END
             FROM candidates WHERE target."Id" = candidates."Id" RETURNING target.*
             """).AsNoTracking().ToArrayAsync(cancellationToken);
         return rows.OrderBy(x => x.Sequence).Select(x => new OutboxLease(leaseId,
@@ -46,7 +47,7 @@ public sealed class PostgresOutboxStore(IDbContextFactory<OrderFleetDbContext> c
         if (maxAttempts is < 1 or > 100 || errorCode is not (FailureCodes.BrokerUnavailable or FailureCodes.InvalidEnvelope)) throw new ArgumentException("Invalid retry policy.");
         await using var context = await contexts.CreateDbContextAsync(cancellationToken);
         var next = now + retries.GetDelay(lease.Attempts, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(300));
-        DateTimeOffset? dead = lease.Attempts >= maxAttempts ? now : null;
+        DateTimeOffset? dead = errorCode == FailureCodes.InvalidEnvelope && lease.Attempts >= maxAttempts ? now : null;
         return await context.OutboxMessages.Where(x => x.Id == lease.Message.MessageId && x.LeaseId == lease.LeaseId
                 && x.LeasedUntilUtc > now && x.PublishedAtUtc == null && x.DeadLetteredAtUtc == null)
             .ExecuteUpdateAsync(set => set.SetProperty(x => x.NextAttemptAtUtc, next).SetProperty(x => x.DeadLetteredAtUtc, dead)
