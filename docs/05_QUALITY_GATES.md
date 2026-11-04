@@ -4,6 +4,7 @@ Prerequisites: the SDK selected by global.json, Docker Linux containers and Powe
 
 ```powershell
 dotnet restore OrderFleet.slnx
+dotnet tool restore
 dotnet build OrderFleet.slnx -c Release --no-restore -m:1 -warnaserror
 dotnet format OrderFleet.slnx --verify-no-changes --no-restore --verbosity quiet
 dotnet test OrderFleet.slnx -c Release --no-build --no-restore -m:1
@@ -41,6 +42,6 @@ dotnet ef migrations has-pending-model-changes --project src/OrderFleet.Infrastr
 
 Restore your prior environment value afterwards. Query-plan tests seed only their disposable database, including100k/300k histories and an idle workload; full [before](evidence/release-recovery-before.txt) and [after](evidence/release-recovery-after.txt) plans include ANALYZE/BUFFERS output. Synthetic timings do not establish a production SLA.
 
-Run supported dependency vulnerability checks, source/history secret checks and `git diff --check` before publication. Run the full suite after final source cleanup. The GitHub workflow must be observed remotely; local execution alone cannot prove hosted CI.
+Run `pwsh -File ./scripts/Verify-Dependencies.ps1`, source/history secret checks and `git diff --check` before publication. The local tool manifest pins dotnet-ef10.0.4; restore it with `dotnet tool restore`. Run the full suite after final source cleanup. The GitHub workflow must be observed remotely; local execution alone cannot prove hosted CI.
 
 For an executable system smoke run [Bootstrap and Invoke-Demo](13_DELIVERY_GUIDE.md). Use a new project and free ports, inspect only its resources, and stop it without deleting existing data. Verify health, migrations, durable broker topology and financial records as well as HTTP outcomes.

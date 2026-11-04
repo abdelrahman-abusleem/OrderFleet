@@ -21,3 +21,6 @@
 **/*.tmp
 artifacts
 coverage
+AGENTS.md
+CLAUDE.md
+README_INSTALL.txt

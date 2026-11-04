@@ -9,6 +9,3 @@ GET {{OrderFleet.Api_HostAddress}}/api/v1/restaurants
 Accept: application/json
 
 ###
-
-# Authenticated order journey: scripts/Invoke-Demo.ps1 and docs/13_DELIVERY_GUIDE.md.
-# Keep local passwords and bearer tokens outside tracked HTTP files.

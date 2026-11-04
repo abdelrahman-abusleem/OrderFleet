@@ -89,10 +89,12 @@ Full routes, errors, pagination, events and SignalR behavior: [API contracts](do
 
 ```powershell
 dotnet restore OrderFleet.slnx
+dotnet tool restore
 dotnet build OrderFleet.slnx -c Release --no-restore -m:1 -warnaserror
 dotnet format OrderFleet.slnx --verify-no-changes --no-restore --verbosity quiet
 dotnet test OrderFleet.slnx -c Release --no-build --no-restore -m:1
 pwsh -File ./scripts/Verify-Migrations.ps1
+pwsh -File ./scripts/Verify-Dependencies.ps1
 ```
 
 Docker is required for Integration tests. They use disposable PostGIS/RabbitMQ and actual migrations, never a developer database. The latest full local regression passed260 Domain+302 Integration=562 cases,0 failed/skipped. Independent test collections are capped at two to bound shared Docker pressure; explicit concurrent sessions/barriers remain enabled. [Testing](docs/05_QUALITY_GATES.md) and [release verification](docs/16_RELEASE_VERIFICATION.md) distinguish executed local evidence from remote CI and operational readiness.

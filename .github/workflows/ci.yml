@@ -13,8 +13,16 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet restore OrderFleet.slnx
-      - run: dotnet format whitespace OrderFleet.slnx --verify-no-changes --no-restore
-      - run: dotnet build OrderFleet.slnx -c Release --no-restore
+      - run: dotnet tool restore
+      - run: dotnet format OrderFleet.slnx --verify-no-changes --no-restore --verbosity quiet
+      - run: dotnet build OrderFleet.slnx -c Release --no-restore -warnaserror
+      - name: Dependency vulnerability audit
+        shell: pwsh
+        run: ./scripts/Verify-Dependencies.ps1
+      - name: EF model drift
+        env:
+          ConnectionStrings__OrderFleet: Host=127.0.0.1;Port=1;Database=design_only;Username=design_only
+        run: dotnet ef migrations has-pending-model-changes --project src/OrderFleet.Infrastructure --startup-project src/OrderFleet.Api --configuration Release --no-build
       - run: dotnet test tests/OrderFleet.Domain.Tests -c Release --no-build --no-restore
   integration:
     runs-on: ubuntu-latest
@@ -26,7 +34,11 @@ jobs:
           global-json-file: global.json
       - run: docker info
       - run: dotnet restore OrderFleet.slnx
+      - run: dotnet tool restore
       - run: dotnet test tests/OrderFleet.IntegrationTests -c Release --no-restore --logger trx --results-directory TestResults
+      - name: Fresh migration chain
+        shell: pwsh
+        run: ./scripts/Verify-Migrations.ps1
       - name: Clean Compose bootstrap and HTTP journey
         shell: pwsh
         run: |

@@ -25,3 +25,9 @@ coverage/
 Thumbs.db
 .DS_Store
 .tools/
+.agents/
+.codex/
+.claude/
+AGENTS.md
+CLAUDE.md
+README_INSTALL.txt
