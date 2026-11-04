@@ -19,6 +19,7 @@ public sealed class ProductionConfigurationTests(PostgresFixture fixture) : ICla
     [InlineData("AllowedHosts", "*.example.test")]
     [InlineData("AllowedHosts", "")]
     [InlineData("Jwt:Issuer", "http://issuer.example.test")]
+    [InlineData("Cors:AllowedOrigins:0", "http://frontend.example.test")]
     public async Task ExplicitDemo_StillRejectsUnsafeDeploymentSettings(string key, string value)
     {
         await using var factory = new ApiFactory(fixture) { EnvironmentName = "Production" };

@@ -30,4 +30,5 @@ public interface IOrderQueryStore
 {
     Task<DeliveryDetails?> DeliveryAsync(Guid id, CancellationToken cancellationToken);
     Task<IReadOnlyList<Order>> ListAsync(Guid? customerId, Guid? restaurantId, int offset, int count, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Order>> ListCourierAssignmentsAsync(Guid courierId, int offset, int count, CancellationToken cancellationToken);
 }

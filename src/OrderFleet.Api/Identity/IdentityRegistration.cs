@@ -28,6 +28,8 @@ public static class IdentityRegistration
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         }).AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<OrderFleetDbContext>();
         services.AddScoped<IIdentityAccounts, IdentityAccounts>();
+        services.AddScoped<IIdentityAdministrationStore, EfIdentityAdministrationStore>();
+        services.AddScoped<ManageIdentityAccess>();
         services.AddScoped<IOrderReadStore, EfOrderReadStore>();
         services.AddScoped<GetOrder>();
         services.AddScoped<OrderAccessPolicy>();
@@ -67,7 +69,8 @@ public static class IdentityRegistration
                     || path == "/api/v1/auth/login" || path == "/api/v1/auth/register")
                     return RateLimitPartition.GetNoLimiter("other");
                 var read = HttpMethods.IsGet(context.Request.Method) || path.StartsWithSegments("/hubs/orders");
-                var create = HttpMethods.IsPost(context.Request.Method) && path.Value?.TrimEnd('/') == "/api/v1/orders";
+                var create = HttpMethods.IsPost(context.Request.Method)
+                    && string.Equals(path.Value?.TrimEnd('/'), "/api/v1/orders", StringComparison.OrdinalIgnoreCase);
                 var bucket = create ? "create" : read ? "read" : "write";
                 var actor = context.User.FindFirst("sub")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 return RateLimitPartition.GetFixedWindowLimiter(bucket + ":" + actor, _ => new FixedWindowRateLimiterOptions
@@ -161,16 +164,16 @@ public static class IdentityRegistration
                     context.Fail("Invalid subject.");
                     return;
                 }
-                if (context.Principal!.IsInRole(OrderFleetRoles.Admin))
+                var privileged = context.Principal!.FindAll("role").Where(claim => claim.Value is OrderFleetRoles.Admin
+                    or OrderFleetRoles.RestaurantOwner or OrderFleetRoles.RestaurantStaff or OrderFleetRoles.Courier).ToArray();
+                if (privileged.Length > 0)
                 {
                     var database = context.HttpContext.RequestServices.GetRequiredService<OrderFleetDbContext>();
                     var current = await (from grant in database.UserRoles.AsNoTracking()
                                          join role in database.Roles on grant.RoleId equals role.Id
-                                         where grant.UserId == id && role.Name == OrderFleetRoles.Admin
-                                         select grant.UserId).AnyAsync(context.HttpContext.RequestAborted);
-                    if (!current)
-                        foreach (var identity in context.Principal.Identities.OfType<ClaimsIdentity>())
-                            foreach (var claim in identity.FindAll("role").Where(claim => claim.Value == OrderFleetRoles.Admin).ToArray())
+                                         where grant.UserId == id select role.Name).ToArrayAsync(context.HttpContext.RequestAborted);
+                    foreach (var identity in context.Principal.Identities.OfType<ClaimsIdentity>())
+                        foreach (var claim in identity.FindAll("role").Where(claim => privileged.Contains(claim) && !current.Contains(claim.Value, StringComparer.Ordinal)).ToArray())
                                 identity.RemoveClaim(claim);
                 }
             }

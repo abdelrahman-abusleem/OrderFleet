@@ -22,6 +22,7 @@ var builder = WebApplication.CreateBuilder(args.Where(arg => arg is not ("--migr
 builder.AddOrderTelemetry();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddDeploymentSafety(builder.Configuration, builder.Environment);
+builder.Services.AddFrontendCors(builder.Configuration, builder.Environment);
 
 var connectionString = builder.Configuration
     .GetConnectionString("OrderFleet")
@@ -80,6 +81,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-OrderFleet-Payments"] = "mock";
     await next(context);
 });
+app.UseCors();
+app.UseHubOriginBoundary();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
@@ -95,6 +98,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapIdentityEndpoints();
+app.MapIdentityAdministrationEndpoints();
 app.MapOrderReadEndpoints();
 app.MapCatalogEndpoints();
 app.MapOrderWriteEndpoints();

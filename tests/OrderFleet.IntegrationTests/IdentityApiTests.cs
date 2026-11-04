@@ -71,6 +71,7 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         {
             context.Restaurants.Add(restaurantEntity);
             context.Users.Add(new IdentityUser<Guid> { Id = user, UserName = $"{user:N}@example.test" });
+            context.UserRoles.Add(new IdentityUserRole<Guid> { UserId = user, RoleId = await context.Roles.Where(x => x.Name == "RestaurantStaff").Select(x => x.Id).SingleAsync() });
             context.RestaurantMemberships.Add(new RestaurantMembership(user, restaurant));
             context.Orders.Add(order);
             await context.SaveChangesAsync();
@@ -179,6 +180,7 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         await using var factory = new ApiFactory(fixture);
         using var client = factory.CreateClient(new() { BaseAddress = new("https://localhost") });
         var user = Guid.NewGuid();
+        var foreignUser = Guid.NewGuid();
         var restaurantEntity = Restaurant.Create("Identity test kitchen", new(24.7m, 46.7m));
         var restaurant = restaurantEntity.Id;
         var order = Order.Create(role == "Customer" ? user : Guid.NewGuid(), restaurant,
@@ -191,11 +193,13 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         await using (var context = fixture.CreateContext())
         {
             context.Restaurants.Add(restaurantEntity);
-            if (role.StartsWith("Restaurant", StringComparison.Ordinal))
+            var roleId = await context.Roles.Where(x => x.Name == role).Select(x => x.Id).SingleAsync();
+            foreach (var identity in new[] { user, foreignUser })
             {
-                context.Users.Add(new IdentityUser<Guid> { Id = user, UserName = $"{user:N}@example.test" });
-                context.RestaurantMemberships.Add(new RestaurantMembership(user, restaurant));
+                context.Users.Add(new IdentityUser<Guid> { Id = identity, UserName = $"{identity:N}@example.test" });
+                context.UserRoles.Add(new IdentityUserRole<Guid> { UserId = identity, RoleId = roleId });
             }
+            if (role.StartsWith("Restaurant", StringComparison.Ordinal)) context.RestaurantMemberships.Add(new RestaurantMembership(user, restaurant));
             context.Orders.Add(order);
             await context.SaveChangesAsync();
         }
@@ -203,7 +207,7 @@ public sealed class IdentityApiTests(PostgresFixture fixture) : IClassFixture<Po
         var allowed = await client.GetAsync($"/api/v1/orders/{order.Id}");
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Equal(order.Id, (await allowed.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid());
-        client.DefaultRequestHeaders.Authorization = new("Bearer", Token(factory, Guid.NewGuid(), role));
+        client.DefaultRequestHeaders.Authorization = new("Bearer", Token(factory, foreignUser, role));
         var denied = await client.GetAsync($"/api/v1/orders/{order.Id}");
         Assert.Equal(HttpStatusCode.NotFound, denied.StatusCode);
         var missing = await client.GetAsync($"/api/v1/orders/{Guid.NewGuid()}");

@@ -107,6 +107,10 @@ public sealed class EfOrderingStore(OrderFleetDbContext context, ILogger<EfOrder
 
     public void RecordAudit(Guid actorId, Guid orderId, string action, DateTimeOffset occurredAt) =>
         context.OrderAuditEntries.Add(new(actorId, orderId, action, occurredAt));
+    public async Task<IReadOnlyList<Order>> ListCourierAssignmentsAsync(Guid courierId, int offset, int count, CancellationToken ct) =>
+        await context.Orders.AsNoTracking().Where(order => order.CourierId == courierId
+            && (order.Status == OrderStatus.Assigned || order.Status == OrderStatus.PickedUp))
+            .OrderByDescending(order => order.AssignedAt).ThenBy(order => order.Id).Skip(offset).Take(count).ToArrayAsync(ct);
     public async Task<IReadOnlyList<Order>> ListAsync(Guid? customerId, Guid? restaurantId, int offset, int count,
         CancellationToken cancellationToken) => await context.Orders.AsNoTracking()
             .Where(x => (!customerId.HasValue || x.CustomerId == customerId) && (!restaurantId.HasValue || x.RestaurantId == restaurantId))

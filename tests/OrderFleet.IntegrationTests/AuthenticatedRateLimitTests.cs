@@ -41,7 +41,10 @@ public sealed class AuthenticatedRateLimitTests(PostgresFixture fixture) : IClas
         var (restaurant, product) = await CatalogAsync(owner);
         for (var i = 0; i < 2; i++)
             Assert.Equal(HttpStatusCode.Created, (await CreateAsync(customer, Request(restaurant, product), Guid.NewGuid().ToString("N"))).StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await CreateAsync(customer, Request(restaurant, product), Guid.NewGuid().ToString("N"))).StatusCode);
+        using var variedCase = new HttpRequestMessage(HttpMethod.Post, "/API/v1/Orders/")
+        { Content = JsonContent.Create(Request(restaurant, product)) };
+        variedCase.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await customer.SendAsync(variedCase)).StatusCode);
         await using var verify = fixture.CreateContext();
         Assert.Equal(2, await verify.Orders.CountAsync(x => x.CustomerId == actor));
     }

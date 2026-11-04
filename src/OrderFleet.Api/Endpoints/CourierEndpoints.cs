@@ -3,6 +3,7 @@ using OrderFleet.Api.Identity;
 using OrderFleet.Application.Couriers;
 using OrderFleet.Application.Errors;
 using OrderFleet.Application.Identity;
+using OrderFleet.Application.Orders;
 
 namespace OrderFleet.Api.Endpoints;
 
@@ -14,6 +15,8 @@ public static class CourierEndpoints
     public static void MapCourierEndpoints(this WebApplication app)
     {
         var self = app.MapGroup("/api/v1/couriers/me").RequireAuthorization(policy => policy.RequireRole(OrderFleetRoles.Courier));
+        self.MapGet("/orders", async (int? page, int? pageSize, ClaimsPrincipal principal, QueryOrders query, CancellationToken ct) =>
+            Results.Ok(await query.CourierAssignmentsAsync(principal.ToActor(), page ?? 1, pageSize ?? 20, ct)));
         self.MapPut("/", async (ClaimsPrincipal principal, ManageCourier command, CancellationToken ct) =>
         {
             await command.RegisterAsync(principal.ToActor(), ct);

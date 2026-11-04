@@ -23,6 +23,10 @@ public sealed class StartupOptionsTests(PostgresFixture fixture) : IClassFixture
     [InlineData("Cleanup:ResolvedRecoveryDays", "29")]
     [InlineData("Cleanup:FinishedDispatchDays", "29")]
     [InlineData("Eta:AverageSpeedKmh", "0")]
+    [InlineData("RequestLimits:ReadPerMinute", "0")]
+    [InlineData("RequestLimits:WritePerMinute", "10001")]
+    [InlineData("RequestLimits:CreatePerMinute", "0")]
+    [InlineData("RequestLimits:HubPerMinute", "0")]
     public async Task InvalidCriticalOptions_FailStartupWithoutEchoingSecrets(string option, string value)
     {
         await using var factory = new ApiFactory(fixture);

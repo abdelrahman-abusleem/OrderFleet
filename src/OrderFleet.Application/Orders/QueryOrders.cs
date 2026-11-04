@@ -6,6 +6,13 @@ namespace OrderFleet.Application.Orders;
 
 public sealed class QueryOrders(IOrderQueryStore store, IRestaurantAccess access, GetOrder getOrder)
 {
+    public async Task<IReadOnlyList<OrderDetails>> CourierAssignmentsAsync(Actor actor, int page, int size, CancellationToken ct)
+    {
+        if (!actor.IsInRole(OrderFleetRoles.Courier)) throw new AccessDeniedException();
+        return (await store.ListCourierAssignmentsAsync(actor.Id, BrowseCatalog.Offset(page, size), size, ct))
+            .Select(GetOrder.Describe).ToArray();
+    }
+
     public async Task<DeliveryDetails> DeliveryAsync(Guid id, Actor actor, CancellationToken cancellationToken)
     {
         _ = await getOrder.ExecuteAsync(id, actor, cancellationToken) ?? throw new ResourceNotFoundException();
